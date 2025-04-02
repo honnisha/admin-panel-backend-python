@@ -1,17 +1,44 @@
 import json
+import logging
 import urllib
-from typing import Any
+from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
-from admin_panel.table_schema import ActionData, ActionResult, CategoryTable, ListData, ListFilters, TableListResult
+from admin_panel.api.api_exception import AdminAPIErrorModel, AdminAPIException
+from admin_panel.controllers import AdminAuthentication
+from admin_panel.schema.table.admin_action import ActionData, ActionResult
+from admin_panel.schema.table.category_table import CategoryTable
+from admin_panel.schema.table.table_models import (
+    AutocompleteData,
+    AutocompleteResult,
+    CreateResult,
+    ListData,
+    ListFilters,
+    TableListResult,
+    UpdateResult,
+)
 
 router = APIRouter(prefix="/table", tags=["table"])
 
+logger = logging.getLogger('admin_panel')
 
-def get_table_category(schema, group: str, category: str) -> CategoryTable:
-    schema_group = schema.get_group(group)
+
+async def get_user(request):
+    auth: AdminAuthentication = request.app.state.auth
+    try:
+        user = await auth.authenticate(request.headers)
+    except AdminAPIException as e:
+        return JSONResponse(e.get_error(), status_code=e.status_code)
+
+    return user
+
+
+async def get_table_category(request, group: str, category: str) -> CategoryTable:
+    user = await get_user(request)
+
+    schema_group = request.app.state.schema.get_group(group)
     if not schema_group:
         raise HTTPException(status_code=404, detail="Group not found")
 
@@ -22,73 +49,84 @@ def get_table_category(schema, group: str, category: str) -> CategoryTable:
     if not issubclass(schema_category.__class__, CategoryTable):
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not a table")
 
-    return schema_category
+    return schema_category, user
 
 
 # pylint: disable=too-many-arguments
-@router.get(path='/{group}/{category}/')
-async def table_list(
-        request: Request,
-        group: str,
-        category: str,
-        page: int = 1,
-        limit: int = 25,
-        search: str | None = None,
-        ordering: str | None = None,
-        filters: str | None = None,
-):
-    schema_category = get_table_category(request.app.state.schema, group, category)
+@router.post(path='/{group}/{category}/list/')
+async def table_list(request: Request, group: str, category: str, list_data: ListData):
+    schema_category, user = await get_table_category(request, group, category)
+    result: TableListResult = await schema_category.get_list(list_data, user)
 
-    filters_data = ListFilters(search=None, filters={})
-    if filters:
-        filters_data = json.loads(urllib.parse.unquote(filters))
-        filters_data = ListFilters(**filters_data)
-
-    list_data = ListData(
-        page=page,
-        limit=limit,
-        search=search,
-        ordering=ordering,
-        filters=filters_data,
-    )
-    result: TableListResult = await schema_category.get_list(list_data)
-    return JSONResponse(content=result.asdict())
+    try:
+        return JSONResponse(content=result.asdict())
+    except Exception as e:
+        logger.exception('Admin list error: %s; result: %s', e, result)
+        raise HTTPException(status_code=500, detail=f"Content error: {e}") from e
 
 
-@router.get(path='/{group}/{category}/retrive/{pk}/')
-async def table_retrive(request: Request, group: str, category: str, pk: Any):
-    schema_category = get_table_category(request.app.state.schema, group, category)
+@router.post(path='/{group}/{category}/retrieve/{pk}/')
+async def table_retrieve(request: Request, group: str, category: str, pk: Any):
+    schema_category, user = await get_table_category(request, group, category)
     if not schema_category.has_retrieve:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for retrive")
 
-    data = schema_category.retrieve(pk)
+    data: Optional[dict] = await schema_category.retrieve(pk, user)
     if data is None:
         raise HTTPException(status_code=404, detail=f"PK \"{pk}\" is not found")
 
-    return JSONResponse(content=data)
+    try:
+        return JSONResponse(content=data)
+    except Exception as e:
+        logger.exception('Admin retrieve error: %s; result: %s', e, data)
+        raise HTTPException(status_code=500, detail=f"Content error: {e}") from e
 
 
-@router.post(path='/{group}/{category}/create/')
+@router.post(
+    path='/{group}/{category}/create/',
+    responses={400: {"model": AdminAPIErrorModel}},
+)
 async def table_create(request: Request, group: str, category: str):
-    schema_category = get_table_category(request.app.state.schema, group, category)
+    schema_category, user = await get_table_category(request, group, category)
     if not schema_category.has_create:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for create")
 
-    schema_category.create(request.body())
+    try:
+        result: CreateResult = await schema_category.create(await request.json(), user)
+    except AdminAPIException as e:
+        return JSONResponse(e.get_error(), status_code=e.status_code)
+
+    return JSONResponse(content=result.dict())
 
 
-@router.patch(path='/{group}/{category}/update/{pk}/')
-async def table_update(request: Request, group: str, category: str, pk: Any):
-    schema_category = get_table_category(request.app.state.schema, group, category)
+@router.patch(
+    path='/{group}/{category}/update/{pk}/',
+    responses={400: {"model": AdminAPIErrorModel}},
+)
+async def table_update(request: Request, group: str, category: str, pk: Any) -> UpdateResult:
+    schema_category, user = await get_table_category(request, group, category)
     if not schema_category.has_update:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for update")
 
-    schema_category.update(pk, request.body())
+    try:
+        result: UpdateResult = await schema_category.update(pk, await request.json(), user)
+    except AdminAPIException as e:
+        return JSONResponse(e.get_error(), status_code=e.status_code)
+
+    return JSONResponse(content=result.dict())
 
 
 @router.post(path='/{group}/{category}/action/{action}/')
 async def table_action(request: Request, group: str, category: str, action: str, action_data: ActionData):
-    schema_category = get_table_category(request.app.state.schema, group, category)
+    schema_category, user = await get_table_category(request, group, category)
 
     result: ActionResult = await schema_category._perform_action(action, action_data)  # pylint: disable=protected-access
     return JSONResponse(content=result.asdict())
+
+
+@router.post(path='/{group}/{category}/autocomplete/')
+async def table_autocomplete(request: Request, group: str, category: str, data: AutocompleteData):
+    schema_category, user = await get_table_category(request, group, category)
+
+    result: AutocompleteResult = await schema_category._autocomplete(data)  # pylint: disable=protected-access
+    return JSONResponse(content=result.dict())

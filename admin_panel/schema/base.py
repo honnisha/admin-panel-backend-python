@@ -4,7 +4,7 @@ from typing import List, Optional
 
 
 class Category(abc.ABC):
-    slug: str
+    slug: str = None
     title: str | None = None
 
     # https://pictogrammers.com/library/mdi/
@@ -12,7 +12,7 @@ class Category(abc.ABC):
 
     type_slug: str = 'table'
 
-    def generate_schema(self) -> dict:
+    def generate_schema(self, user) -> dict:
         return {
             'title': self.title or self.slug,
             'icon': self.icon,
@@ -34,7 +34,7 @@ class Group(abc.ABC):
             if not issubclass(category.__class__, Category):
                 raise TypeError(f'Category "{category}" is not instance of Category subclass')
 
-    def generate_schema(self) -> dict:
+    def generate_schema(self, user) -> dict:
         result = {
             'title': self.title or self.slug,
             'icon': self.icon,
@@ -44,7 +44,7 @@ class Group(abc.ABC):
             if category.slug in result['categories']:
                 raise KeyError(f'Group slug:"{self.slug}" already have category slug:"{category.slug}"')
 
-            result['categories'][category.slug] = category.generate_schema()
+            result['categories'][category.slug] = category.generate_schema(user)
 
         return result
 
@@ -65,9 +65,9 @@ class AdminSchema:
             if not issubclass(group.__class__, Group):
                 raise TypeError(f'Group "{group}" is not instance of Group subclass')
 
-    def generate_schema(self) -> dict:
+    def generate_schema(self, user) -> dict:
         groups = {
-            group.slug: group.generate_schema()
+            group.slug: group.generate_schema(user)
             for group in self.groups
         }
         return {
