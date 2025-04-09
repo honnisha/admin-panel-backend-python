@@ -41,7 +41,7 @@ class TableField(abc.ABC):
 
         return value
 
-    async def autocomplete(self, model, data):
+    async def autocomplete(self, model, data, user):
         raise NotImplementedError()
 
     # pylint: disable=too-many-arguments

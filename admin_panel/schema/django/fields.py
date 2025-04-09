@@ -9,20 +9,36 @@ from admin_panel.schema.table.table_models import Record
 
 
 @dataclass
-class ForeignKey(TableField):
-    _type: str = 'foreign_key'
+class RelatedField(TableField):
+    queryset: Any = None
+    many: bool = False
+    _type: str = 'related'
+
+    def generate_schema(self, user, field_slug) -> dict:
+        schema = super().generate_schema(user, field_slug)
+        schema['many'] = self.many
+        return schema
 
     async def serialize(self, value, *args, **kwargs) -> Any:
         if value:
             return {'key': value.pk, 'title': await sync_to_async(value.__str__)()}
 
-    async def autocomplete(self, model, data):
-        model_field = model._meta.get_field(data.field_slug)
-        target_model = model_field.remote_field.model
+    def get_queryset(self, model, data):
+        if self.queryset is not None:
+            return self.queryset
 
+        if model:
+            model_field = model._meta.get_field(data.field_slug)
+            target_model = model_field.remote_field.model
+            return target_model.objects.all()
+
+        else:
+            raise AttributeError('ForeignKey must provide queryset in case non model views!')
+
+    async def autocomplete(self, model, data, user):
         results = []
 
-        qs = target_model.objects.all()[:data.limit]
+        qs = self.get_queryset(model, data)[:data.limit]
         if data.search_string:
             qs = qs.filter(id=data.search_string)
 
@@ -30,7 +46,7 @@ class ForeignKey(TableField):
             existed_choices = [i['key'] for i in data.existed_choices]
 
             # Добавляет в результат уже выбранные варианты
-            filter_pks = target_model.objects.filter(pk__in=existed_choices)
+            filter_pks = qs.model.objects.filter(pk__in=existed_choices)
             qs = qs.union(filter_pks)
 
         async for record in qs:

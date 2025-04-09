@@ -1,5 +1,26 @@
+from typing import List
+
+from pydantic import BaseModel
+
 from admin_panel.schema.base import Category
 from admin_panel.schema.table.fields_schema import FieldsSchema
+from admin_panel.schema.table.table_models import ListFilters
+
+
+class GraphData(BaseModel):
+    filters: ListFilters
+
+
+class ChartData(BaseModel):
+    data: dict
+    options: dict
+    width: int | None = None
+    height: int = 50
+    type: str = 'line'
+
+
+class GraphsDataResult(BaseModel):
+    charts: List[ChartData]
 
 
 class CategoryGraphs(Category):
@@ -23,3 +44,6 @@ class CategoryGraphs(Category):
 
         schema['graph_info'] = graph
         return schema
+
+    async def get_data(self, data: GraphData, user) -> GraphsDataResult:
+        raise NotImplementedError()

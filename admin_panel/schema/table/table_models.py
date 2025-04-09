@@ -23,7 +23,7 @@ class AutocompleteData(BaseModel):
     field_slug: str
     is_filter: bool
     form_data: dict
-    existed_choices: List[Any]
+    existed_choices: List[Any] = []
     action_name: str | None = None
     limit: int = 25
 

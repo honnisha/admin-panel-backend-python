@@ -96,7 +96,7 @@ class CategoryTable(Category):
 
         return result
 
-    async def _autocomplete(self, data: AutocompleteData) -> AutocompleteResult:
+    async def _autocomplete(self, data: AutocompleteData, user: UserABC) -> AutocompleteResult:
         raise NotImplementedError('autocomplete is not implemented')
 
     # pylint: disable=too-many-arguments
