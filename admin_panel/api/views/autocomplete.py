@@ -15,5 +15,5 @@ logger = logging.getLogger('admin_panel')
 async def autocomplete(request: Request, group: str, category: str, data: AutocompleteData):
     schema_category, user = await get_category(request, group, category)
 
-    result: AutocompleteResult = await schema_category._autocomplete(data, user)  # pylint: disable=protected-access
+    result: AutocompleteResult = await schema_category.autocomplete(data, user)  # pylint: disable=protected-access
     return JSONResponse(content=result.dict())

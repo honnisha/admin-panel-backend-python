@@ -32,6 +32,7 @@ class ActionResult:
 
 
 # pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
 def admin_action(
     title: str,
     description: Optional[str] = None,

@@ -1,9 +1,10 @@
 import abc
 import asyncio
 from typing import Awaitable, List
+
 from fastapi import HTTPException
-from admin_panel.controllers.auth import UserABC
-from admin_panel.schema.base import Category
+
+from admin_panel.schema.base import Category, UserABC
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult, ListData, TableListResult
@@ -24,7 +25,8 @@ class CategoryTable(Category):
 
     def __init__(self):
         if self.slug is None:
-            raise Exception('slug must be set')
+            msg = f'Category table attribute {type(self).__name__}.slug must be set'
+            raise Exception(msg)
 
     @property
     def has_retrieve(self):
@@ -96,7 +98,10 @@ class CategoryTable(Category):
 
         return result
 
-    async def _autocomplete(self, data: AutocompleteData, user: UserABC) -> AutocompleteResult:
+    async def autocomplete(self, data: AutocompleteData, user: UserABC) -> AutocompleteResult:
+        """
+        Retrieves list of found options to select.
+        """
         raise NotImplementedError('autocomplete is not implemented')
 
     # pylint: disable=too-many-arguments

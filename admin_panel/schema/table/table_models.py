@@ -7,7 +7,7 @@ from pydantic import BaseModel
 @dataclass
 class TableListResult:
     data: dict
-    total_count: int
+    total_count: int = 0
 
     def asdict(self):
         return asdict(self)

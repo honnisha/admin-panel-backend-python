@@ -1,4 +1,4 @@
-from admin_panel.controllers.auth import UserABC
+from admin_panel.schema.base import UserABC
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult
 
 
@@ -7,7 +7,7 @@ class DjangoAdminAutocomplete:
     def get_model(self):
         return None
 
-    async def _autocomplete(self, data: AutocompleteData, user: UserABC) -> AutocompleteResult:
+    async def autocomplete(self, data: AutocompleteData, user: UserABC) -> AutocompleteResult:
         form_schema = None
 
         if data.action_name is not None:

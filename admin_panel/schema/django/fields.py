@@ -1,15 +1,13 @@
 from dataclasses import dataclass
 from typing import Any
 
-from asgiref.sync import sync_to_async
-
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
 from admin_panel.schema.table.table_models import Record
 
 
 @dataclass
-class RelatedField(TableField):
+class DjangoRelatedField(TableField):
     queryset: Any = None
     many: bool = False
     _type: str = 'related'
@@ -20,6 +18,8 @@ class RelatedField(TableField):
         return schema
 
     async def serialize(self, value, *args, **kwargs) -> Any:
+        from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
+
         if value:
             return {'key': value.pk, 'title': await sync_to_async(value.__str__)()}
 
@@ -36,6 +36,8 @@ class RelatedField(TableField):
             raise AttributeError('ForeignKey must provide queryset in case non model views!')
 
     async def autocomplete(self, model, data, user):
+        from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
+
         results = []
 
         qs = self.get_queryset(model, data)[:data.limit]

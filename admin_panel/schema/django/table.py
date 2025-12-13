@@ -1,11 +1,9 @@
 import logging
 from typing import List
 
-from asgiref.sync import sync_to_async
-
-from admin_panel.controllers.auth import UserABC
+from admin_panel.schema.base import UserABC
 from admin_panel.schema.django.autocomplete import DjangoAdminAutocomplete
-from admin_panel.schema.django.fields import RelatedField
+from admin_panel.schema.django.fields import DjangoRelatedField
 from admin_panel.schema.table import fields as schema_fields
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
 from admin_panel.schema.table.category_table import CategoryTable
@@ -23,7 +21,7 @@ def fix_str(value):
     return value
 
 
-class DjangoORMFieldsSchema(FieldsSchema):
+class DjangoFieldsSchema(FieldsSchema):
     _model = None
     _readonly_fields: List[str] = []
 
@@ -61,7 +59,7 @@ class DjangoORMFieldsSchema(FieldsSchema):
 
             elif field.__class__.__name__ == 'ForeignKey':
                 field_data['required'] = not field.null
-                field_class = RelatedField
+                field_class = DjangoRelatedField
 
             elif field.__class__.__name__ == 'DateTimeField':
                 field_class = schema_fields.DateTimeField
@@ -127,6 +125,8 @@ class DjangoAdminBase(DjangoAdminAutocomplete, CategoryTable):
             self.title = fix_str(self.get_model()._meta.verbose_name_plural)
 
     async def get_list(self, list_data: ListData, user: UserABC) -> TableListResult:
+        from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
+
         data = []
         qs = self.get_queryset()
         total_count = await qs.acount()

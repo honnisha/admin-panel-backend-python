@@ -1,12 +1,11 @@
 [project]
 name = "admin-panel"
-version = "0.1.0"
+version = "0.2.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.8",
-    "uvicorn>=0.34.0",
 ]
 
 [build-system]
@@ -15,3 +14,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ['admin_panel']
+
+[project.optional-dependencies]
+example = [
+    "uvicorn>=0.34.0",
+]

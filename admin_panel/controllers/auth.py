@@ -2,16 +2,13 @@ import abc
 
 from pydantic import BaseModel
 
-from admin_panel.api.api_exception import APIError, AdminAPIException
+from admin_panel.api.api_exception import AdminAPIException, APIError
+from admin_panel.schema.base import UserABC
 
 
 class AuthData(BaseModel):
     username: str
     password: str
-
-
-class UserABC(abc.ABC):
-    username: str
 
 
 class UserResult(BaseModel):

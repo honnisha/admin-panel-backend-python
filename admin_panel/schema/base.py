@@ -3,6 +3,10 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 
+class UserABC(abc.ABC):
+    username: str
+
+
 class Category(abc.ABC):
     slug: str = None
     title: str | None = None

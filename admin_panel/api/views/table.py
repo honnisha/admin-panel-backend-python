@@ -8,13 +8,7 @@ from admin_panel.api.api_exception import AdminAPIErrorModel, AdminAPIException
 from admin_panel.api.utils import get_category
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.category_table import CategoryTable
-from admin_panel.schema.table.table_models import (
-    CreateResult,
-    ListData,
-    ListFilters,
-    TableListResult,
-    UpdateResult,
-)
+from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
 
 router = APIRouter(prefix="/table", tags=["table"])
 
@@ -87,7 +81,8 @@ async def table_update(request: Request, group: str, category: str, pk: Any) -> 
 
 @router.post(path='/{group}/{category}/action/{action}/')
 async def table_action(request: Request, group: str, category: str, action: str, action_data: ActionData):
-    schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
+    schema_category, _user = await get_category(request, group, category, check_type=CategoryTable)
 
-    result: ActionResult = await schema_category._perform_action(action, action_data)  # pylint: disable=protected-access
+    # pylint: disable=protected-access
+    result: ActionResult = await schema_category._perform_action(action, action_data)
     return JSONResponse(content=result.asdict())
