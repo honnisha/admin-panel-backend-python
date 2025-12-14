@@ -1,10 +1,13 @@
 from typing import Any, Optional
+
 from admin_panel import schema
+from admin_panel.utils import LanguageManager
+from admin_panel.utils import TranslateText as _
 
 
 class PaymentFiltersSchema(schema.FieldsSchema):
     id = schema.IntegerField(label='ID')
-    created_at = schema.DateTimeField(label='Created')
+    created_at = schema.DateTimeField(label=_('created_at'))
 
     _fields = [
         'id',
@@ -14,8 +17,8 @@ class PaymentFiltersSchema(schema.FieldsSchema):
 
 class PaymentFieldsSchema(schema.FieldsSchema):
     id = schema.IntegerField(label='ID')
-    amount = schema.IntegerField(label='Amount')
-    created_at = schema.DateTimeField(label='Created')
+    amount = schema.IntegerField(label=_('amount'))
+    created_at = schema.DateTimeField(label=_('created_at'))
 
     _fields = [
         'id',
@@ -29,17 +32,18 @@ class PaymentFieldsSchema(schema.FieldsSchema):
         'created_at',
     ]
 
-    @schema.function_field(label='Реестр проверен', type=schema.BooleanField)
+    @schema.function_field(label=_('Реестр проверен'), type=schema.BooleanField)
     async def get_provider_registry(self, record, **kwargs):
         return await True
 
-    @schema.function_field(label='Информация по реестру провайдера', type=schema.BooleanField)
+    @schema.function_field(label=_('Информация по реестру провайдера'), type=schema.BooleanField)
     async def get_provider_registry_info(self, record, **kwargs):
         return await False
 
 
 class PaymentsAdmin(schema.CategoryTable):
     slug = 'payments'
+    title = _('Платежи')
 
     search_enabled = True
     search_help = 'Search fields: id'
@@ -51,14 +55,14 @@ class PaymentsAdmin(schema.CategoryTable):
     ]
 
     # pylint: disable=too-many-arguments
-    async def get_list(self, list_data: schema.ListData, user: schema.UserABC) -> schema.TableListResult:
-        return schema.TableListResult(data={})
+    async def get_list(self, list_data: schema.ListData, user: schema.UserABC, language: LanguageManager) -> schema.TableListResult:
+        return schema.TableListResult(data=[], total_count=0)
 
     async def retrieve(self, pk: Any, user: schema.UserABC) -> Optional[dict]:
         return {}
 
     async def create(self, data: dict, user: schema.UserABC) -> schema.CreateResult:
-        return NotImplementedError()
+        return schema.CreateResult(pk=0)
 
     async def update(self, pk: Any, data: dict, user: schema.UserABC) -> schema.UpdateResult:
-        return NotImplementedError()
+        return schema.UpdateResult(pk=0)

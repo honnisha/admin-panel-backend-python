@@ -1,11 +1,12 @@
-from dataclasses import asdict, dataclass
 import functools
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import ListFilters
+from admin_panel.utils import DataclassBase
 
 
 class ActionData(BaseModel):
@@ -16,19 +17,16 @@ class ActionData(BaseModel):
 
 
 @dataclass
-class ActionMessage:
+class ActionMessage(DataclassBase):
     text: str
     type: str = 'success'
     position: str = 'top-center'
 
 
 @dataclass
-class ActionResult:
+class ActionResult(DataclassBase):
     message: ActionMessage | None = None
     persistent_message: str | None = None
-
-    def asdict(self):
-        return asdict(self)
 
 
 # pylint: disable=too-many-arguments
@@ -64,7 +62,7 @@ def admin_action(
             'variant': variant,
 
             'allow_empty_selection': allow_empty_selection,
-            'form_schema': form_schema.generate_schema() if form_schema else None,
+            'form_schema': form_schema,
         }
 
         @functools.wraps(func)

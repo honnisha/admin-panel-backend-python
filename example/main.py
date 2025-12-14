@@ -5,7 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from admin_panel import generate_app, schema
-from admin_panel.controllers import DjangoJWTAdminAuthentication
+from admin_panel.api.api_exception import AdminAPIException, APIError
+from admin_panel.controllers.auth import AdminAuthentication, AuthData, AuthResult, UserResult
+from admin_panel.schema.base import UserABC
+from admin_panel.utils import LanguageManager, TranslateText
 from example.graphs import GraphsExample
 from example.payments import PaymentsAdmin
 
@@ -36,30 +39,53 @@ class LogConfig(BaseModel):
 logging.config.dictConfig(LogConfig().dict())
 
 
-admin_schema = schema.AdminSchema(groups=[
-    schema.Group(
-        slug='payments',
-        title='Платежи',
-        icon='mdi-credit-card-outline',
-        categories=[
-            PaymentsAdmin(),
-        ]
-    ),
-    schema.Group(
-        slug='statistics',
-        title='Статистика',
-        icon='mdi-finance',
-        categories=[
-            GraphsExample(),
-        ]
-    ),
-])
+class CustomLanguageManager(LanguageManager):
+    def get_text(self, text: str | TranslateText | None) -> str:
+        if isinstance(text, TranslateText):
+            return text.slug
+        return text
+
+
+admin_schema = schema.AdminSchema(
+    title='Example',
+    language_manager_class=CustomLanguageManager,
+    groups=[
+        schema.Group(
+            slug='payments',
+            title='Платежи',
+            icon='mdi-credit-card-outline',
+            categories=[
+                PaymentsAdmin(),
+            ]
+        ),
+        schema.Group(
+            slug='statistics',
+            title='Статистика',
+            icon='mdi-finance',
+            categories=[
+                GraphsExample(),
+            ]
+        ),
+    ],
+)
 
 app = FastAPI(debug=True)
 
+
+class FakeAdminAuthentication(AdminAuthentication):
+    async def login(self, data: AuthData) -> AuthResult:
+        if data.username != 'admin' and data.password != 'admin':
+            raise AdminAPIException(APIError(message='User not found', code='user_not_found'), status_code=401)
+
+        return AuthResult(token='test', user=UserResult(username='test_admin'))
+
+    async def authenticate(self, headers: dict) -> UserABC:
+        return UserABC(username='test_admin')
+
+
 admin_app = generate_app(
     admin_schema,
-    auth=DjangoJWTAdminAuthentication(secret='test'),
+    auth=FakeAdminAuthentication(),
     debug=True,
 )
 

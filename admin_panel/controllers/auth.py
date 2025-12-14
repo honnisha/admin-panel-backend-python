@@ -35,7 +35,9 @@ class DjangoJWTAdminAuthentication(AdminAuthentication):
         self.secret = secret
 
     async def login(self, data: AuthData) -> AuthResult:
-        from django.contrib.auth import get_user_model
+        from django.contrib.auth import get_user_model  # pylint: disable=import-outside-toplevel
+        import jwt  # pylint: disable=import-outside-toplevel
+
         User = get_user_model()
         user = await User.objects.filter(username=data.username).afirst()
         if not user:
@@ -44,24 +46,23 @@ class DjangoJWTAdminAuthentication(AdminAuthentication):
         if not user.is_staff:
             raise AdminAPIException(APIError(message='User is not an admin', code='not_an_admin'), status_code=401)
 
-        import jwt
         token = jwt.encode({"user_pk": user.pk}, self.secret, algorithm="HS256")
         return AuthResult(token=token, user=UserResult(username=user.username))
 
-
     async def authenticate(self, headers: dict) -> UserABC:
+        from django.contrib.auth import get_user_model  # pylint: disable=import-outside-toplevel
+        import jwt  # pylint: disable=import-outside-toplevel
+
         token = headers.get('Authorization')
         if not token:
             raise AdminAPIException(APIError(message='Token is not presented'), status_code=401)
 
         token = token.replace('Token ', '')
-        import jwt
         try:
             auth_payload = jwt.decode(token, self.secret, algorithms=["HS256"])
         except jwt.exceptions.DecodeError as e:
-            raise AdminAPIException(APIError(message='Token decoding error', code='token_error'), status_code=401)
+            raise AdminAPIException(APIError(message='Token decoding error', code='token_error'), status_code=401) from e
 
-        from django.contrib.auth import get_user_model
         User = get_user_model()
         user = await User.objects.filter(pk=auth_payload.get('user_pk'), is_staff=True).afirst()
         if not user:

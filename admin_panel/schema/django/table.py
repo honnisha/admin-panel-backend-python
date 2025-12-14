@@ -11,6 +11,7 @@ from admin_panel.schema.table.fields.deserialize_action_types import Deserialize
 from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
+from admin_panel.utils import LanguageManager
 
 logger = logging.getLogger('admin_panel')
 
@@ -33,7 +34,8 @@ class DjangoFieldsSchema(FieldsSchema):
 
         model = getattr(self, '_model', model)
         if not model:
-            raise AttributeError(f'Class {self.__class__} must have _model')
+            msg = f'Class {self.__class__} must have _model'
+            raise AttributeError(msg)
 
         added_fields = []
         for field in model._meta.fields:
@@ -89,7 +91,8 @@ class DjangoFieldsSchema(FieldsSchema):
         for field_slug in self._readonly_fields:
             field = self.get_field(field_slug)
             if not field:
-                raise AttributeError(f'Field "{field_slug}" from _readonly_fields is not found')
+                msg = f'Field "{field_slug}" from _readonly_fields is not found'
+                raise AttributeError(msg)
 
             field.read_only = True
 
@@ -124,7 +127,7 @@ class DjangoAdminBase(DjangoAdminAutocomplete, CategoryTable):
         if not self.title:
             self.title = fix_str(self.get_model()._meta.verbose_name_plural)
 
-    async def get_list(self, list_data: ListData, user: UserABC) -> TableListResult:
+    async def get_list(self, list_data: ListData, user: UserABC, language: LanguageManager) -> TableListResult:
         from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
 
         data = []

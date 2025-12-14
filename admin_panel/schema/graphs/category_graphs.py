@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from admin_panel.schema.base import Category
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import ListFilters
+from admin_panel.utils import LanguageManager
 
 
 class GraphData(BaseModel):
@@ -31,8 +32,8 @@ class CategoryGraphs(Category):
 
     table_filters: FieldsSchema | None = None
 
-    def generate_schema(self, user) -> dict:
-        schema = super().generate_schema(user)
+    def generate_schema(self, user, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, language)
         graph = {}
 
         graph['search_enabled'] = self.search_enabled
@@ -40,7 +41,7 @@ class CategoryGraphs(Category):
 
         graph['table_filters'] = {}
         if self.table_filters:
-            graph['table_filters'] = self.table_filters.generate_schema(user)
+            graph['table_filters'] = self.table_filters.generate_schema(user, language)
 
         schema['graph_info'] = graph
         return schema

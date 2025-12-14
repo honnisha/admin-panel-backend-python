@@ -4,6 +4,7 @@ from admin_panel.schema.table.admin_action import ActionData, ActionMessage, Act
 from admin_panel.schema.table.category_table import CategoryTable
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
+from admin_panel.utils import LanguageManager
 
 
 class SQLAlchemyFieldsSchema(FieldsSchema):
@@ -17,7 +18,7 @@ class SQLAlchemyDeleteAction:
 
 
 class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
-    async def get_list(self, list_data: ListData, user: UserABC) -> TableListResult:
+    async def get_list(self, list_data: ListData, user: UserABC, language: LanguageManager) -> TableListResult:
         return TableListResult(
             data=[],
             total_count=0,

@@ -1,6 +1,9 @@
-from dataclasses import asdict, dataclass
 from typing import Dict
+
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
+
+from admin_panel.utils import DataclassBase
 
 
 class FieldErrorModel(BaseModel):
@@ -15,7 +18,7 @@ class AdminAPIErrorModel(BaseModel):
 
 
 @dataclass
-class APIError:
+class APIError(DataclassBase):
     message: str | None = None
     code: str | None = None
     field_errors: dict | None = None
@@ -34,7 +37,7 @@ class FieldError(Exception):
 
 
 class AdminAPIException(Exception):
-    data: dict
+    data: APIError
     status_code: int
     error_code: str | None = None
 
@@ -46,4 +49,4 @@ class AdminAPIException(Exception):
         return str(self.data)
 
     def get_error(self) -> dict:
-        return asdict(self.data)
+        return self.data.model_dump(mode='json')

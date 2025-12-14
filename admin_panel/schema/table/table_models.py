@@ -1,16 +1,15 @@
-from dataclasses import asdict, dataclass
 from typing import Any, Dict, List
 
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
+
+from admin_panel.utils import DataclassBase
 
 
 @dataclass
-class TableListResult:
-    data: dict
-    total_count: int = 0
-
-    def asdict(self):
-        return asdict(self)
+class TableListResult(DataclassBase):
+    data: List
+    total_count: int
 
 
 class ListFilters(BaseModel):

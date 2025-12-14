@@ -6,9 +6,11 @@ from fastapi.responses import JSONResponse
 
 from admin_panel.api.api_exception import AdminAPIErrorModel, AdminAPIException
 from admin_panel.api.utils import get_category
+from admin_panel.schema.base import AdminSchema
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.category_table import CategoryTable
 from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
+from admin_panel.utils import LanguageManager
 
 router = APIRouter(prefix="/table", tags=["table"])
 
@@ -18,11 +20,17 @@ logger = logging.getLogger('admin_panel')
 # pylint: disable=too-many-arguments
 @router.post(path='/{group}/{category}/list/')
 async def table_list(request: Request, group: str, category: str, list_data: ListData):
+    schema: AdminSchema = request.app.state.schema
+
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
-    result: TableListResult = await schema_category.get_list(list_data, user)
+
+    language_slug = request.headers.get('Accept-Language')
+    language: LanguageManager = schema.get_language_manager(language_slug)
+
+    result: TableListResult = await schema_category.get_list(list_data, user, language)
 
     try:
-        return JSONResponse(content=result.asdict())
+        return JSONResponse(content=result.model_dump(mode='json'))
     except Exception as e:
         logger.exception('Admin list error: %s; result: %s', e, result)
         raise HTTPException(status_code=500, detail=f"Content error: {e}") from e
@@ -85,4 +93,4 @@ async def table_action(request: Request, group: str, category: str, action: str,
 
     # pylint: disable=protected-access
     result: ActionResult = await schema_category._perform_action(action, action_data)
-    return JSONResponse(content=result.asdict())
+    return JSONResponse(content=result.model_dump(mode='json'))

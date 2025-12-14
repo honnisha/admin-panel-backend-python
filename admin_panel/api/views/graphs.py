@@ -16,7 +16,7 @@ logger = logging.getLogger('admin_panel')
 async def graph_data(request: Request, group: str, category: str, data: GraphData) -> GraphsDataResult:
     schema_category, user = await get_category(request, group, category, check_type=CategoryGraphs)
 
-    result: GraphsDataResult = await schema_category.get_data(data, user)  # pylint: disable=protected-access
+    result: GraphsDataResult = await schema_category.get_data(data, user)
 
     try:
         return JSONResponse(content=result.dict())

@@ -8,6 +8,7 @@ from admin_panel.schema.base import Category, UserABC
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult, ListData, TableListResult
+from admin_panel.utils import LanguageManager
 
 
 class CategoryTable(Category):
@@ -43,15 +44,15 @@ class CategoryTable(Category):
         fn = getattr(self, 'update', None)
         return asyncio.iscoroutinefunction(fn)
 
-    def generate_schema(self, user) -> dict:
-        schema = super().generate_schema(user)
+    def generate_schema(self, user, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, language)
         table = {}
 
         table_schema = getattr(self, 'table_schema', None)
         if not table_schema or not issubclass(table_schema.__class__, FieldsSchema):
             raise AttributeError(f'Admin category {self.__class__} must have table_schema instance of FieldsSchema')
 
-        table['table_schema'] = self.table_schema.generate_schema(user)
+        table['table_schema'] = self.table_schema.generate_schema(user, language)
         table['ordering_fields'] = self.ordering_fields
 
         table['search_enabled'] = self.search_enabled
@@ -65,13 +66,21 @@ class CategoryTable(Category):
 
         table['table_filters'] = {}
         if self.table_filters:
-            table['table_filters'] = self.table_filters.generate_schema(user)
+            table['table_filters'] = self.table_filters.generate_schema(user, language)
 
         actions = {}
         for attribute_name in dir(self):
+            if '__' in attribute_name:
+                continue
+
             attribute = getattr(self, attribute_name)
             if asyncio.iscoroutinefunction(attribute) and getattr(attribute, '__action__', False):
                 action = attribute.action_info
+
+                form_schema = action['form_schema']
+                if form_schema:
+                    action['form_schema'] = form_schema.generate_schema(user, language)
+
                 actions[attribute_name] = action
 
         table['actions'] = actions
@@ -106,7 +115,7 @@ class CategoryTable(Category):
 
     # pylint: disable=too-many-arguments
     @abc.abstractmethod
-    async def get_list(self, list_data: ListData, user: UserABC) -> TableListResult:
+    async def get_list(self, list_data: ListData, user: UserABC, language: LanguageManager) -> TableListResult:
         raise NotImplementedError()
 
 #     async def retrieve(self, pk: Any, user: UserABC) -> Optional[dict]:

@@ -1,20 +1,25 @@
 from typing import Dict
 
+from pydantic.dataclasses import dataclass
+
 from admin_panel.api.api_exception import AdminAPIException, APIError, FieldError
+from admin_panel.schema.base import UserABC
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
 from admin_panel.schema.table.fields.function_field import FunctionField
+from admin_panel.utils import LanguageManager
 
 
 class DeserializeError(Exception):
     pass
 
 
+@dataclass
 class FieldsSchema:
     _fields = None
     _fields_list = None
 
-    def __init__(self):
+    def __post_init__(self):
         if not self._fields:
             self._fields = []
             for attribute_name in dir(self):
@@ -24,6 +29,9 @@ class FieldsSchema:
 
         # Generation FunctionField
         for attribute_name in dir(self):
+            if '__' in attribute_name:
+                continue
+
             attribute = getattr(self, attribute_name)
             if getattr(attribute, '__function_field__', False):
                 field = FunctionField(fn=attribute, **attribute.__kwargs__)
@@ -35,10 +43,12 @@ class FieldsSchema:
             attribute = getattr(self, attribute_name, None)
 
             if not attribute:
-                raise AttributeError(f'Field "{attribute_name}" not found or None in {self.__class__}')
+                msg = f'Field "{attribute_name}" not found or None in {self.__class__}'
+                raise AttributeError(msg)
 
             if not issubclass(attribute.__class__, TableField):
-                raise AttributeError(f'Field {attribute_name} of {self.__class__}  is not instance of TableField')
+                msg = f'Field {type(self).__name__}.{attribute_name} is not TableField issubclass: {attribute}'
+                raise AttributeError(msg)
 
             yield (attribute_name, attribute)
 
@@ -53,10 +63,10 @@ class FieldsSchema:
 
         return self._fields_list
 
-    def generate_schema(self, user) -> dict:
+    def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
         fields_schema = {}
         fields_schema['fields'] = {
-            field_slug: field.generate_schema(user, field_slug)
+            field_slug: field.generate_schema(user, field_slug, language)
             for field_slug, field in self.get_fields().items()
         }
         return fields_schema

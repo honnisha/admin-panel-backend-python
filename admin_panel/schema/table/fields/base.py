@@ -1,17 +1,19 @@
 import abc
-from dataclasses import dataclass
 from typing import Any, List, Tuple
+
+from pydantic.dataclasses import dataclass
 
 from admin_panel.api.api_exception import FieldError
 from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
+from admin_panel.utils import LanguageManager, TranslateText
 
 
 @dataclass
 class TableField(abc.ABC):
     _type: str
 
-    label: str | None = None
-    help_text: str | None = None
+    label: str | TranslateText | None = None
+    help_text: str | TranslateText | None = None
     read_only: bool = False
     default: Any | None = None
     required: bool = False
@@ -19,12 +21,12 @@ class TableField(abc.ABC):
     # Table header parameters
     header: dict | None = None
 
-    def generate_schema(self, user, field_slug) -> dict:
+    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
         schema = {}
         schema['type'] = self._type
 
-        schema['label'] = self.label or field_slug
-        schema['help_text'] = self.help_text
+        schema['label'] = language.get_text(self.label) or field_slug
+        schema['help_text'] = language.get_text(self.help_text)
         schema['header'] = self.header
         schema['read_only'] = self.read_only
         schema['default'] = self.default
@@ -58,8 +60,8 @@ class IntegerField(TableField):
 
     choices: List[Tuple[str, int]] | None = None
 
-    def generate_schema(self, user, field_slug) -> dict:
-        schema = super().generate_schema(user, field_slug)
+    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language)
 
         schema['choices'] = self.choices
 
@@ -81,8 +83,8 @@ class StringField(TableField):
 
     choices: List[Tuple[str, str]] | None = None
 
-    def generate_schema(self, user, field_slug) -> dict:
-        schema = super().generate_schema(user, field_slug)
+    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language)
 
         schema['choices'] = self.choices
 

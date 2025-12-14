@@ -1,9 +1,12 @@
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic.dataclasses import dataclass
+
+from admin_panel.schema.base import UserABC
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
 from admin_panel.schema.table.table_models import Record
+from admin_panel.utils import LanguageManager
 
 
 @dataclass
@@ -12,8 +15,8 @@ class DjangoRelatedField(TableField):
     many: bool = False
     _type: str = 'related'
 
-    def generate_schema(self, user, field_slug) -> dict:
-        schema = super().generate_schema(user, field_slug)
+    def generate_schema(self, user: UserABC, field_slug, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language)
         schema['many'] = self.many
         return schema
 
