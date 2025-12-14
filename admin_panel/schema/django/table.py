@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from admin_panel.schema.base import UserABC
 from admin_panel.schema.django.autocomplete import DjangoAdminAutocomplete
@@ -24,7 +23,6 @@ def fix_str(value):
 
 class DjangoFieldsSchema(FieldsSchema):
     _model = None
-    _readonly_fields: List[str] = []
 
     def __init__(self, model=None, fields=None):
         if fields:
@@ -88,10 +86,10 @@ class DjangoFieldsSchema(FieldsSchema):
         if not self._fields:
             self._fields = added_fields
 
-        for field_slug in self._readonly_fields:
+        for field_slug in self.readonly_fields:
             field = self.get_field(field_slug)
             if not field:
-                msg = f'Field "{field_slug}" from _readonly_fields is not found'
+                msg = f'Field "{field_slug}" from readonly_fields is not found'
                 raise AttributeError(msg)
 
             field.read_only = True

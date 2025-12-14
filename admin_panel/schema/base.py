@@ -6,29 +6,29 @@ from urllib.parse import urljoin
 from fastapi import Request
 from pydantic.dataclasses import dataclass
 
-from admin_panel.utils import LanguageManager, TranslateText
+from admin_panel.utils import DataclassBase, LanguageManager, TranslateText
 
 
 @dataclass
-class UserABC(abc.ABC):
+class UserABC(DataclassBase, abc.ABC):
     username: str
 
 
 @dataclass
 class Category(abc.ABC):
     slug: ClassVar[str]
-    title: str | TranslateText | None = None
+    title: ClassVar[str | TranslateText | None] = None
 
     # https://pictogrammers.com/library/mdi/
-    icon: str | None = None
+    icon: ClassVar[str | None] = None
 
-    type_slug: str = 'table'
+    _type_slug: ClassVar[str]
 
     def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
         return {
             'title': language.get_text(self.title) or self.slug,
             'icon': self.icon,
-            'type': self.type_slug,
+            'type': self._type_slug,
         }
 
 
@@ -36,7 +36,7 @@ class Category(abc.ABC):
 class Group(abc.ABC):
     categories: List[Category]
     slug: str
-    title: str | None = None
+    title: str | TranslateText | None = None
 
     # https://pictogrammers.com/library/mdi/
     icon: str | None = None
@@ -48,7 +48,7 @@ class Group(abc.ABC):
 
     def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
         result = {
-            'title': self.title or self.slug,
+            'title': language.get_text(self.title) or self.slug,
             'icon': self.icon,
             'categories': {},
         }
@@ -74,10 +74,16 @@ class Group(abc.ABC):
 
 
 @dataclass
+class AdminSchemaData(DataclassBase):
+    groups: dict
+    profile: UserABC
+
+
+@dataclass
 class AdminSchema:
     groups: List[Group]
 
-    title: str | TranslateText | None = 'admin_panel_title'
+    title: str | TranslateText | None = 'Admin'
     favicon_image: str = '/admin/static/favicon.ico'
     backend_prefix = None
     static_prefix = None
@@ -92,7 +98,7 @@ class AdminSchema:
     def get_language_manager(self, language_slug: str | None) -> LanguageManager:
         return self.language_manager_class(language_slug)
 
-    def generate_schema(self, user: UserABC, language_slug: str | None) -> dict:
+    def generate_schema(self, user: UserABC, language_slug: str | None) -> AdminSchemaData:
         language: LanguageManager = self.get_language_manager(language_slug)
 
         groups = {}
@@ -104,9 +110,10 @@ class AdminSchema:
 
             groups[group.slug] = group.generate_schema(user, language)
 
-        return {
-            'groups': groups,
-        }
+        return AdminSchemaData(
+            groups=groups,
+            profile=user,
+        )
 
     def get_group(self, group_slug: str) -> Optional[Group]:
         for group in self.groups:
@@ -117,7 +124,7 @@ class AdminSchema:
 
     async def get_settings(self, request: Request):
         language_slug = request.headers.get('Accept-Language')
-        language: LanguageManager = self.get_language_manager(language_slug)
+        language_manager: LanguageManager = self.get_language_manager(language_slug)
 
         backend_prefix = self.backend_prefix
         if not backend_prefix:
@@ -127,11 +134,18 @@ class AdminSchema:
         if not static_prefix:
             static_prefix = urljoin(str(request.base_url), '/admin/static/')
 
+        languages = None
+        if language_manager.languages:
+            languages = {}
+            for k, v in language_manager.languages.items():
+                languages[k] = language_manager.get_text(v)
+
         return {
-            'title': language.get_text(self.title),
+            'title': language_manager.get_text(self.title),
             'logo_image': None,
             'backend_prefix': backend_prefix,
             'static_prefix': static_prefix,
             'version': importlib.metadata.version('admin-panel'),
             'api_timeout_ms': 1000 * 5,
+            'languages': languages,
         }

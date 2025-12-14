@@ -5,7 +5,7 @@ from admin_panel.utils import TranslateText as _
 
 class GraphsFiltersSchema(schema.FieldsSchema):
     id = schema.IntegerField(label='ID')
-    created_at = schema.DateTimeField(label=_('created'))
+    created_at = schema.DateTimeField(label=_('created_at'))
 
     _fields = [
         'id',
@@ -16,9 +16,7 @@ class GraphsFiltersSchema(schema.FieldsSchema):
 class GraphsExample(schema.CategoryGraphs):
     slug = 'graphs-example'
     title = _('graphs_example')
-
-    search_enabled = True
-    search_help = 'Search fields: id'
+    icon = 'mdi-chart-bar-stacked'
 
     table_filters = GraphsFiltersSchema()
 

@@ -3,13 +3,13 @@ from fastapi.responses import JSONResponse
 
 from admin_panel.api.api_exception import AdminAPIException
 from admin_panel.controllers import AdminAuthentication
-from admin_panel.schema.base import AdminSchema
+from admin_panel.schema.base import AdminSchema, AdminSchemaData
 
 router = APIRouter(prefix="/schema", tags=["schema"])
 
 
 @router.get(path='/')
-async def schema_handler(request: Request):
+async def schema_handler(request: Request) -> AdminSchemaData:
     schema: AdminSchema = request.app.state.schema
 
     auth: AdminAuthentication = request.app.state.auth
@@ -19,4 +19,5 @@ async def schema_handler(request: Request):
         return JSONResponse(e.get_error(), status_code=e.status_code)
 
     language_slug = request.headers.get('Accept-Language')
-    return JSONResponse(content=schema.generate_schema(user, language_slug))
+    admin_schema = schema.generate_schema(user, language_slug)
+    return admin_schema

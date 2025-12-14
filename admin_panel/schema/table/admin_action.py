@@ -1,12 +1,12 @@
 import functools
 from typing import Any, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validate_arguments
 from pydantic.dataclasses import dataclass
 
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import ListFilters
-from admin_panel.utils import DataclassBase
+from admin_panel.utils import DataclassBase, TranslateText
 
 
 class ActionData(BaseModel):
@@ -18,7 +18,7 @@ class ActionData(BaseModel):
 
 @dataclass
 class ActionMessage(DataclassBase):
-    text: str
+    text: str | TranslateText
     type: str = 'success'
     position: str = 'top-center'
 
@@ -26,17 +26,18 @@ class ActionMessage(DataclassBase):
 @dataclass
 class ActionResult(DataclassBase):
     message: ActionMessage | None = None
-    persistent_message: str | None = None
+    persistent_message: str | TranslateText | None = None
 
 
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
+@validate_arguments
 def admin_action(
-    title: str,
-    description: Optional[str] = None,
-    short_description: Optional[str] = None,
-    confirmation_text: Optional[str] = None,
+    title: str | TranslateText,
+    description: Optional[str | TranslateText] = None,
+    confirmation_text: Optional[str | TranslateText] = None,
 
+    # https://vuetifyjs.com/en/styles/colors/#material-colors
     base_color: Optional[str] = None,
 
     # https://pictogrammers.com/library/mdi/
@@ -54,7 +55,6 @@ def admin_action(
         func.action_info = {
             'title': title,
             'description': description,
-            'short_description': short_description,
             'confirmation_text': confirmation_text,
 
             'icon': icon,

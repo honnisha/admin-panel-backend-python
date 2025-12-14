@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from pydantic.dataclasses import dataclass
 
@@ -16,16 +16,21 @@ class DeserializeError(Exception):
 
 @dataclass
 class FieldsSchema:
-    _fields = None
-    _fields_list = None
+    fields: List | None = None
+
+    fields_list: List | None = None
+    readonly_fields: List | None = None
 
     def __post_init__(self):
-        if not self._fields:
-            self._fields = []
+        if not self.fields:
+            self.fields = []
             for attribute_name in dir(self):
+                if '__' in attribute_name:
+                    continue
+
                 attribute = getattr(self, attribute_name)
                 if issubclass(attribute.__class__, TableField):
-                    self._fields.append(attribute_name)
+                    self.fields.append(attribute_name)
 
         # Generation FunctionField
         for attribute_name in dir(self):
@@ -39,7 +44,7 @@ class FieldsSchema:
                 setattr(self, attribute.__name__, field)
 
     def _iter_fields(self):
-        for attribute_name in self._fields:
+        for attribute_name in self.fields:
             attribute = getattr(self, attribute_name, None)
 
             if not attribute:
@@ -56,12 +61,14 @@ class FieldsSchema:
         return self.get_fields().get(field_slug)
 
     def get_fields(self) -> Dict[str, TableField]:
-        assert len(self._fields) > 0, f'Schema {self.__class__} fields is empty'
+        if not self.fields:
+            msg = f'Schema {type(self).__name__}.fields is empty'
+            raise AttributeError(msg)
 
-        if self._fields_list is None:
-            self._fields_list = {i[0]: i[1] for i in self._iter_fields()}
+        if self.fields_list is None:
+            self.fields_list = {i[0]: i[1] for i in self._iter_fields()}
 
-        return self._fields_list
+        return self.fields_list
 
     def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
         fields_schema = {}

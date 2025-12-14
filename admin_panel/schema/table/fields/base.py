@@ -129,3 +129,45 @@ class DateTimeRangeField(TableField):
 @dataclass
 class JSONField(TableField):
     _type: str = 'json'
+
+
+@dataclass
+class FileField(TableField):
+    _type: str = 'file'
+
+
+@dataclass
+class ImageField(TableField):
+    _type: str = 'image'
+
+    preview_max_height: int = 100
+    preview_max_width: int = 100
+
+    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language)
+
+        if self.preview_max_height is not None:
+            schema['preview_max_height'] = self.preview_max_height
+
+        if self.preview_max_width is not None:
+            schema['preview_max_width'] = self.preview_max_width
+
+        return schema
+
+    async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
+        return {'url': value}
+
+
+@dataclass
+class ChoiceField(TableField):
+    _type: str = 'choice'
+
+    # https://vuetifyjs.com/en/components/chips/#color-and-variants
+    tag_colors: dict | None = None
+
+    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language)
+
+        schema['tag_colors'] = self.tag_colors
+
+        return schema

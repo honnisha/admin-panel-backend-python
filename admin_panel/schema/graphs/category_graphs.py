@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from admin_panel.schema.base import Category
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import ListFilters
-from admin_panel.utils import LanguageManager
+from admin_panel.utils import LanguageManager, TranslateText
 
 
 class GraphData(BaseModel):
@@ -25,10 +25,10 @@ class GraphsDataResult(BaseModel):
 
 
 class CategoryGraphs(Category):
-    type_slug: str = 'graphs'
+    _type_slug: str = 'graphs'
 
     search_enabled: bool = False
-    search_help: str | None = None
+    search_help: str | TranslateText | None = None
 
     table_filters: FieldsSchema | None = None
 
@@ -37,7 +37,7 @@ class CategoryGraphs(Category):
         graph = {}
 
         graph['search_enabled'] = self.search_enabled
-        graph['search_help'] = self.search_help
+        graph['search_help'] = language.get_text(self.search_help)
 
         graph['table_filters'] = {}
         if self.table_filters:

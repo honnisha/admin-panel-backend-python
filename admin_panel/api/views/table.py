@@ -89,8 +89,13 @@ async def table_update(request: Request, group: str, category: str, pk: Any) -> 
 
 @router.post(path='/{group}/{category}/action/{action}/')
 async def table_action(request: Request, group: str, category: str, action: str, action_data: ActionData):
+    schema: AdminSchema = request.app.state.schema
+
     schema_category, _user = await get_category(request, group, category, check_type=CategoryTable)
 
+    language_slug = request.headers.get('Accept-Language')
+    language: LanguageManager = schema.get_language_manager(language_slug)
+
     # pylint: disable=protected-access
-    result: ActionResult = await schema_category._perform_action(action, action_data)
+    result: ActionResult = await schema_category._perform_action(action, action_data, language)
     return JSONResponse(content=result.model_dump(mode='json'))
