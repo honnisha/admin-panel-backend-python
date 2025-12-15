@@ -3,13 +3,16 @@ import asyncio
 import copy
 from typing import Awaitable, List
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
-from admin_panel.schema.base import Category, UserABC
+from admin_panel.auth import UserABC
+from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.schema import Category
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult, ListData, TableListResult
-from admin_panel.utils import LanguageManager, TranslateText
+from admin_panel.translations import LanguageManager, TranslateText
+from admin_panel.utils import DeserializeAction
 
 
 class CategoryTable(Category):
@@ -104,15 +107,39 @@ class CategoryTable(Category):
 
         return attribute
 
-    async def _perform_action(self, action: str, action_data: ActionData, language: LanguageManager) -> ActionResult:
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
+    async def _perform_action(
+            self,
+            request: Request,
+            action: str,
+            action_data: ActionData,
+            language: LanguageManager,
+            user: UserABC,
+    ) -> ActionResult:
         action_fn = self._get_action_fn(action)
         if action_fn is None:
-            raise HTTPException(status_code=404, detail=f"Action \"{action}\" is not found")
+            raise HTTPException(status_code=404, detail=f'Action "{action}" is not found')
 
         try:
+            form_schema = action_fn.action_info['form_schema']
+            if form_schema:
+                deserialized_data = await form_schema.deserialize(
+                    action_data.form_data,
+                    action=DeserializeAction.TABLE_ACTION,
+                    extra={'user': user, 'request': request}
+                )
+                action_data.form_data = deserialized_data
+
             result: ActionResult = await action_fn(action_data)
+        except AdminAPIException as e:
+            language.translate_dataclass(e)
+            raise e
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Action \"{action}\" error: {e}") from e
+            raise AdminAPIException(
+                APIError(message=str(e), code='user_action_error'),
+                status_code=500,
+            ) from e
 
         if result.message:
             result.message.text = language.get_text(result.message.text)

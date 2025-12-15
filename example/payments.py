@@ -1,13 +1,15 @@
+import asyncio
 import datetime
 import uuid
 from typing import Any, Optional
 
 from faker import Faker
 
-from admin_panel import schema
+from admin_panel import auth, schema
+from admin_panel.exceptions import FieldError
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
-from admin_panel.utils import LanguageManager
-from admin_panel.utils import TranslateText as _
+from admin_panel.translations import LanguageManager
+from admin_panel.translations import TranslateText as _
 
 
 class PaymentFiltersSchema(schema.FieldsSchema):
@@ -20,7 +22,11 @@ class PaymentFiltersSchema(schema.FieldsSchema):
     ]
 
 
-STATUS_COLORS = {'process': 'gray', 'success': 'green', 'error': 'red'}
+STATUS_COLORS = {
+    'process': 'grey-lighten-1',
+    'success': 'green-darken-1',
+    'error': 'red-lighten-2',
+}
 
 
 class PaymentFieldsSchema(schema.FieldsSchema):
@@ -32,28 +38,37 @@ class PaymentFieldsSchema(schema.FieldsSchema):
         label=_('status'),
         tag_colors=STATUS_COLORS,
     )
-    image = schema.ImageField(label=_('image'))
+    # image = schema.ImageField(label=_('image'))
     created_at = schema.DateTimeField(label=_('created_at'), read_only=True)
 
     fields = [
         'id',
         'amount',
+        'endpoint',
+        'status',
+        'description',
         'created_at',
         'get_provider_registry',
         'get_provider_registry_info',
     ]
 
     @schema.function_field(label=_('registry_checked'), type=schema.BooleanField)
-    async def get_provider_registry(self, record, **kwargs):
-        return await True
+    async def get_provider_registry(self, record, user, **kwargs):
+        return True
 
     @schema.function_field(label=_('registry_info_checked'), type=schema.BooleanField)
-    async def get_provider_registry_info(self, record, **kwargs):
-        return await False
+    async def get_provider_registry_info(self, record, user, **kwargs):
+        return False
 
 
 class CreatePaymentSchema(schema.FieldsSchema):
     amount = schema.IntegerField(label=_('amount'))
+    is_throw_error = schema.BooleanField(label=_('is_throw_error'))
+
+    async def validate_is_throw_error(self, value):
+        if value:
+            raise FieldError(_('throw_error'))
+        return value
 
 
 class PaymentsAdmin(schema.CategoryTable):
@@ -77,6 +92,7 @@ class PaymentsAdmin(schema.CategoryTable):
         allow_empty_selection=True,
     )
     async def create_payment(self, action_data: ActionData):
+        await asyncio.sleep(1)
         msg = _('payment_create_result') % {
             'gateway_id': str(uuid.uuid4()),
             'redirect_url': 'https://www.google.com',
@@ -90,7 +106,13 @@ class PaymentsAdmin(schema.CategoryTable):
         variant='outlined',
     )
     async def delete(self, action_data: ActionData):
-        return ActionResult(message=ActionMessage('test'))
+        await asyncio.sleep(1)
+        return ActionResult(message=ActionMessage(_('deleted_successfully')))
+
+    @admin_action(title=_('action_with_exception'), allow_empty_selection=True)
+    async def action_with_exception(self, action_data: ActionData):
+        await asyncio.sleep(0.5)
+        raise Exception('Exception desctiption')
 
     def _get_data(self, pk):
         fake = Faker()
@@ -109,7 +131,9 @@ class PaymentsAdmin(schema.CategoryTable):
         }
 
     # pylint: disable=too-many-arguments
-    async def get_list(self, list_data: schema.ListData, user: schema.UserABC, language: LanguageManager) -> schema.TableListResult:
+    async def get_list(
+        self, list_data: schema.ListData, user: auth.UserABC, language: LanguageManager
+    ) -> schema.TableListResult:
         data = []
         total_count = 5039
 
@@ -119,15 +143,15 @@ class PaymentsAdmin(schema.CategoryTable):
                 continue
 
             line_data = self._get_data(pk)
-            line = await self.table_schema.serialize(line_data, extra={'user': user})
+            line = await self.table_schema.serialize(line_data, extra={'user': user, 'record': line_data})
             data.append(line)
 
         return schema.TableListResult(data=data, total_count=total_count)
 
-    async def retrieve(self, pk: Any, user: schema.UserABC) -> Optional[dict]:
+    async def retrieve(self, pk: Any, user: auth.UserABC) -> Optional[dict]:
         line_data = self._get_data(int(pk))
-        line = await self.table_schema.serialize(line_data, extra={'user': user})
+        line = await self.table_schema.serialize(line_data, extra={'user': user, 'record': line_data})
         return line
 
-    async def update(self, pk: Any, data: dict, user: schema.UserABC) -> schema.UpdateResult:
+    async def update(self, pk: Any, data: dict, user: auth.UserABC) -> schema.UpdateResult:
         return schema.UpdateResult(pk=0)

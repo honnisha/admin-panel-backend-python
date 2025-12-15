@@ -2,10 +2,10 @@ from typing import List
 
 from pydantic import BaseModel
 
-from admin_panel.schema.base import Category
+from admin_panel.schema import Category
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import ListFilters
-from admin_panel.utils import LanguageManager, TranslateText
+from admin_panel.translations import LanguageManager, TranslateText
 
 
 class GraphData(BaseModel):

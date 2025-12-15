@@ -1,16 +1,17 @@
 import logging
 
-from admin_panel.schema.base import UserABC
-from admin_panel.schema.django.autocomplete import DjangoAdminAutocomplete
-from admin_panel.schema.django.fields import DjangoRelatedField
+from admin_panel.auth import UserABC
+from admin_panel.schema.table import CategoryTable
 from admin_panel.schema.table import fields as schema_fields
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
-from admin_panel.schema.table.category_table import CategoryTable
-from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
 from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
-from admin_panel.utils import LanguageManager
+from admin_panel.translations import LanguageManager
+from admin_panel.utils import DeserializeAction
+
+from .autocomplete import DjangoAdminAutocomplete
+from .fields import DjangoRelatedField
 
 logger = logging.getLogger('admin_panel')
 
@@ -22,24 +23,22 @@ def fix_str(value):
 
 
 class DjangoFieldsSchema(FieldsSchema):
-    _model = None
+    model = None
 
-    def __init__(self, model=None, fields=None):
-        if fields:
-            self._fields = fields
+    def __init__(self):
 
         super().__init__()
 
-        model = getattr(self, '_model', model)
+        model = getattr(self, 'model', None)
         if not model:
-            msg = f'Class {self.__class__} must have _model'
+            msg = f'Class {self.__class__} must have model'
             raise AttributeError(msg)
 
         added_fields = []
         for field in model._meta.fields:
 
             name = getattr(field, 'name', None) or getattr(field, 'attname', None)
-            if self._fields and name not in self._fields:
+            if self.fields and name not in self.fields:
                 continue
 
             field_data = {}
@@ -83,16 +82,8 @@ class DjangoFieldsSchema(FieldsSchema):
             setattr(self, name, schema_field)
             added_fields.append(name)
 
-        if not self._fields:
-            self._fields = added_fields
-
-        for field_slug in self.readonly_fields:
-            field = self.get_field(field_slug)
-            if not field:
-                msg = f'Field "{field_slug}" from readonly_fields is not found'
-                raise AttributeError(msg)
-
-            field.read_only = True
+        if not self.fields:
+            self.fields = added_fields
 
 
 class DjangoDeleteAction:
@@ -149,6 +140,8 @@ class DjangoAdminBase(DjangoAdminAutocomplete, CategoryTable):
         )
 
     async def retrieve(self, pk, user: UserABC) -> dict | None:
+        from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
+
         assert self.pk_name
         record = await self.get_queryset().filter(**{self.pk_name: pk}).afirst()
         if record is None:

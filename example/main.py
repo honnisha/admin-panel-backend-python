@@ -1,17 +1,17 @@
-import logging
+import logging.config
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from admin_panel import generate_app, schema
-from admin_panel.api.api_exception import AdminAPIException, APIError
-from admin_panel.controllers.auth import AdminAuthentication, AuthData, AuthResult, UserResult
-from admin_panel.schema.base import UserABC
-from admin_panel.utils import LanguageManager
-from admin_panel.utils import TranslateText as _
+from admin_panel.auth import AdminAuthentication, AuthData, AuthResult, UserABC, UserResult
+from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.translations import LanguageManager
+from admin_panel.translations import TranslateText as _
 from example.graphs import GraphsExample
 from example.payments import PaymentsAdmin
+from example.phrases import LANGUAGES_PHRASES
 
 
 class LogConfig(BaseModel):
@@ -37,50 +37,7 @@ class LogConfig(BaseModel):
     }
 
 
-logging.config.dictConfig(LogConfig().dict())
-
-LANGUAGES_PHRASES = {
-    'ru': {
-        'admin_title': 'Admin Panel Демо',
-        'created_at': 'Время создания',
-        'graphs_example': 'Пример графиков',
-        'amount': 'Сумма',
-        'registry_checked': 'Реестр проверен',
-        'registry_info_checked': 'Информация по реестру провайдера',
-        'payments': 'Платежи',
-        'statistics': 'Статистика',
-        'image': 'Изображение',
-        'delete': 'Удалить',
-        'delete_confirmation_text': 'Вы уверены, что хотите удалить данные записи?\nДанное действие нельзя отменить.',
-        'payments_search_fields': 'Доступные поля для поиска: id',
-        'create_payment': 'Создать платеж',
-        'create_payment_description': 'Создать платеж и отправить его на обработку в платежную систему.',
-        'payment_create_result': 'Платеж успешно создан. Данные платежа:<br><br>gateway_id=%(gateway_id)s<br><br>redirect_url: <a href="%(redirect_url)s" target="_blank"/>%(redirect_url)s</a>',
-        'description': 'Описание',
-        'status': 'Статус',
-        'endpoint': 'Эндпоинт',
-    },
-    'en': {
-        'admin_title': 'Admin Panel Demo',
-        'created_at': 'Created time',
-        'graphs_example': 'Graphs example',
-        'amount': 'Amount',
-        'registry_checked': 'Registry checked',
-        'registry_info_checked': 'Registry info checked',
-        'payments': 'Payments',
-        'statistics': 'Statistics',
-        'image': 'Image',
-        'delete': 'Delete',
-        'delete_confirmation_text': 'Are you sure you want to delete those records?\nThis action cannot be undone.',
-        'payments_search_fields': 'Search fields: id',
-        'create_payment': 'Create payment',
-        'create_payment_description': 'Create a payment and send it to the payment system for processing.',
-        'payment_create_result': 'The payment was created successfully. Payment details:<br><br>gateway_id=%(gateway_id)s<br><br>redirect_url: <a href="%(redirect_url)s" target="_blank"/>%(redirect_url)s</a>',
-        'description': 'Description',
-        'status': 'Status',
-        'endpoint': 'Endpoint',
-    },
-}
+logging.config.dictConfig(LogConfig().model_dump())
 
 
 class CustomLanguageManager(LanguageManager):

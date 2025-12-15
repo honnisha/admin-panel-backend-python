@@ -1,6 +1,6 @@
 [project]
 name = "admin-panel"
-version = "0.3.0"
+version = "0.4.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -8,6 +8,7 @@ dependencies = [
     "faker>=38.2.0",
     "fastapi>=0.115.8",
     "jinja2>=3.1.6",
+    "pytest-mock>=3.15.1",
 ]
 
 [build-system]
@@ -21,4 +22,8 @@ packages = ['admin_panel']
 example = [
     "uvicorn>=0.34.0",
     "faker>=38.2.0",
+]
+tests = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
 ]

@@ -1,6 +1,6 @@
 from admin_panel import schema
 from admin_panel.schema.graphs.category_graphs import ChartData, GraphData, GraphsDataResult
-from admin_panel.utils import TranslateText as _
+from admin_panel.translations import TranslateText as _
 
 
 class GraphsFiltersSchema(schema.FieldsSchema):

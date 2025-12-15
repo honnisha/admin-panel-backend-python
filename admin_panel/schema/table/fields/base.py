@@ -3,9 +3,9 @@ from typing import Any, List, Tuple
 
 from pydantic.dataclasses import dataclass
 
-from admin_panel.api.api_exception import FieldError
-from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
-from admin_panel.utils import LanguageManager, TranslateText
+from admin_panel.exceptions import FieldError
+from admin_panel.translations import LanguageManager, TranslateText
+from admin_panel.utils import DeserializeAction
 
 
 @dataclass
@@ -47,6 +47,7 @@ class TableField(abc.ABC):
         raise NotImplementedError()
 
     # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def set_deserialized_value(self, result: dict, field_slug, deserialized_value, action, extra):
         result[field_slug] = deserialized_value
 
@@ -162,12 +163,18 @@ class ImageField(TableField):
 class ChoiceField(TableField):
     _type: str = 'choice'
 
-    # https://vuetifyjs.com/en/components/chips/#color-and-variants
+    # https://vuetifyjs.com/en/styles/colors/#classes
     tag_colors: dict | None = None
+
+    # https://vuetifyjs.com/en/components/chips/#color-and-variants
+    variant: str = 'elevated'
+    size: str = 'default'
 
     def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
         schema = super().generate_schema(user, field_slug, language)
 
         schema['tag_colors'] = self.tag_colors
+        schema['size'] = self.size
+        schema['variant'] = self.variant
 
         return schema

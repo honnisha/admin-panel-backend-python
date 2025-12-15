@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from admin_panel.schema.base import AdminSchema
+from admin_panel.schema import AdminSchema
 
 router = APIRouter()
 

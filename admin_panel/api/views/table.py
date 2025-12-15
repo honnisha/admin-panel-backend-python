@@ -4,13 +4,13 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from admin_panel.api.api_exception import AdminAPIErrorModel, AdminAPIException
 from admin_panel.api.utils import get_category
-from admin_panel.schema.base import AdminSchema
+from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.schema import AdminSchema
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.category_table import CategoryTable
 from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
-from admin_panel.utils import LanguageManager
+from admin_panel.translations import LanguageManager
 
 router = APIRouter(prefix="/table", tags=["table"])
 
@@ -27,7 +27,10 @@ async def table_list(request: Request, group: str, category: str, list_data: Lis
     language_slug = request.headers.get('Accept-Language')
     language: LanguageManager = schema.get_language_manager(language_slug)
 
-    result: TableListResult = await schema_category.get_list(list_data, user, language)
+    try:
+        result: TableListResult = await schema_category.get_list(list_data, user, language)
+    except AdminAPIException as e:
+        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
 
     try:
         return JSONResponse(content=result.model_dump(mode='json'))
@@ -55,7 +58,7 @@ async def table_retrieve(request: Request, group: str, category: str, pk: Any):
 
 @router.post(
     path='/{group}/{category}/create/',
-    responses={400: {"model": AdminAPIErrorModel}},
+    responses={400: {"model": APIError}},
 )
 async def table_create(request: Request, group: str, category: str):
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
@@ -65,14 +68,14 @@ async def table_create(request: Request, group: str, category: str):
     try:
         result: CreateResult = await schema_category.create(await request.json(), user)
     except AdminAPIException as e:
-        return JSONResponse(e.get_error(), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
 
-    return JSONResponse(content=result.dict())
+    return JSONResponse(content=result.model_dump(mode='json'))
 
 
 @router.patch(
     path='/{group}/{category}/update/{pk}/',
-    responses={400: {"model": AdminAPIErrorModel}},
+    responses={400: {"model": APIError}},
 )
 async def table_update(request: Request, group: str, category: str, pk: Any) -> UpdateResult:
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
@@ -82,20 +85,26 @@ async def table_update(request: Request, group: str, category: str, pk: Any) -> 
     try:
         result: UpdateResult = await schema_category.update(pk, await request.json(), user)
     except AdminAPIException as e:
-        return JSONResponse(e.get_error(), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
 
-    return JSONResponse(content=result.dict())
+    return JSONResponse(content=result.model_dump(mode='json'))
 
 
 @router.post(path='/{group}/{category}/action/{action}/')
-async def table_action(request: Request, group: str, category: str, action: str, action_data: ActionData):
+async def table_action(request: Request, group: str, category: str, action: str, action_data: ActionData) -> ActionResult:
     schema: AdminSchema = request.app.state.schema
 
-    schema_category, _user = await get_category(request, group, category, check_type=CategoryTable)
+    schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
 
     language_slug = request.headers.get('Accept-Language')
     language: LanguageManager = schema.get_language_manager(language_slug)
 
-    # pylint: disable=protected-access
-    result: ActionResult = await schema_category._perform_action(action, action_data, language)
+    try:
+        # pylint: disable=protected-access
+        result: ActionResult = await schema_category._perform_action(
+            request, action, action_data, language, user,
+        )
+    except AdminAPIException as e:
+        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
+
     return JSONResponse(content=result.model_dump(mode='json'))

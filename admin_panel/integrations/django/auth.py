@@ -1,31 +1,5 @@
-import abc
-
-from pydantic import BaseModel
-
-from admin_panel.api.api_exception import AdminAPIException, APIError
-from admin_panel.schema.base import UserABC
-
-
-class AuthData(BaseModel):
-    username: str
-    password: str
-
-
-class UserResult(BaseModel):
-    username: str
-
-
-class AuthResult(BaseModel):
-    token: str
-    user: UserResult
-
-
-class AdminAuthentication(abc.ABC):
-    async def login(self, data: AuthData) -> AuthResult:
-        raise NotImplementedError()
-
-    async def authenticate(self, headers: dict) -> UserABC:
-        raise NotImplementedError()
+from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.auth import AdminAuthentication, AuthData, AuthResult, UserABC, UserResult
 
 
 class DjangoJWTAdminAuthentication(AdminAuthentication):
@@ -35,8 +9,8 @@ class DjangoJWTAdminAuthentication(AdminAuthentication):
         self.secret = secret
 
     async def login(self, data: AuthData) -> AuthResult:
-        from django.contrib.auth import get_user_model  # pylint: disable=import-outside-toplevel
         import jwt  # pylint: disable=import-outside-toplevel
+        from django.contrib.auth import get_user_model  # pylint: disable=import-outside-toplevel
 
         User = get_user_model()
         user = await User.objects.filter(username=data.username).afirst()
@@ -50,8 +24,8 @@ class DjangoJWTAdminAuthentication(AdminAuthentication):
         return AuthResult(token=token, user=UserResult(username=user.username))
 
     async def authenticate(self, headers: dict) -> UserABC:
-        from django.contrib.auth import get_user_model  # pylint: disable=import-outside-toplevel
         import jwt  # pylint: disable=import-outside-toplevel
+        from django.contrib.auth import get_user_model  # pylint: disable=import-outside-toplevel
 
         token = headers.get('Authorization')
         if not token:
@@ -61,7 +35,9 @@ class DjangoJWTAdminAuthentication(AdminAuthentication):
         try:
             auth_payload = jwt.decode(token, self.secret, algorithms=["HS256"])
         except jwt.exceptions.DecodeError as e:
-            raise AdminAPIException(APIError(message='Token decoding error', code='token_error'), status_code=401) from e
+            raise AdminAPIException(
+                APIError(message='Token decoding error', code='token_error'), status_code=401
+            ) from e
 
         User = get_user_model()
         user = await User.objects.filter(pk=auth_payload.get('user_pk'), is_staff=True).afirst()

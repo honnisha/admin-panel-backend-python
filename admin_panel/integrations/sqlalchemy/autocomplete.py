@@ -1,4 +1,4 @@
-from admin_panel.schema.base import UserABC
+from admin_panel.auth import UserABC
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult
 
 

@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
-from admin_panel.api.api_exception import AdminAPIException
-from admin_panel.controllers import AdminAuthentication
+from admin_panel.exceptions import AdminAPIException
+from admin_panel.auth import AdminAuthentication
 
 
 async def get_user(request):
@@ -10,7 +10,7 @@ async def get_user(request):
     try:
         user = await auth.authenticate(request.headers)
     except AdminAPIException as e:
-        return JSONResponse(e.get_error(), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
 
     return user
 

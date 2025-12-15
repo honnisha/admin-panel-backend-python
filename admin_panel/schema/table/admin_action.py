@@ -1,12 +1,12 @@
 import functools
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, validate_arguments
+from pydantic import BaseModel, validate_call
 from pydantic.dataclasses import dataclass
 
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import ListFilters
-from admin_panel.utils import DataclassBase, TranslateText
+from admin_panel.translations import DataclassBase, TranslateText
 
 
 class ActionData(BaseModel):
@@ -31,7 +31,7 @@ class ActionResult(DataclassBase):
 
 # pylint: disable=too-many-arguments
 # pylint: disable=too-many-positional-arguments
-@validate_arguments
+@validate_call
 def admin_action(
     title: str | TranslateText,
     description: Optional[str | TranslateText] = None,

@@ -1,9 +1,14 @@
+# pylint: disable=wildcard-import, unused-wildcard-import, unused-import
+# flake8: noqa: F405
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from admin_panel.api.routers import admin_panel_router
-from admin_panel.controllers import AdminAuthentication
+from admin_panel.auth import AdminAuthentication
 from admin_panel.schema import AdminSchema
+
+from .integrations import django, sqlalchemy
 
 
 def generate_app(

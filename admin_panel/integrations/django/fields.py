@@ -2,11 +2,11 @@ from typing import Any
 
 from pydantic.dataclasses import dataclass
 
-from admin_panel.schema.base import UserABC
+from admin_panel.auth import UserABC
 from admin_panel.schema.table.fields.base import TableField
-from admin_panel.schema.table.fields.deserialize_action_types import DeserializeAction
 from admin_panel.schema.table.table_models import Record
-from admin_panel.utils import LanguageManager
+from admin_panel.translations import LanguageManager
+from admin_panel.utils import DeserializeAction
 
 
 @dataclass
@@ -30,13 +30,13 @@ class DjangoRelatedField(TableField):
         if self.queryset is not None:
             return self.queryset
 
-        if model:
-            model_field = model._meta.get_field(data.field_slug)
-            target_model = model_field.remote_field.model
-            return target_model.objects.all()
-
-        else:
+        if not model:
             raise AttributeError('ForeignKey must provide queryset in case non model views!')
+
+        # pylint: disable=protected-access
+        model_field = model._meta.get_field(data.field_slug)
+        target_model = model_field.remote_field.model
+        return target_model.objects.all()
 
     async def autocomplete(self, model, data, user):
         from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
@@ -60,8 +60,10 @@ class DjangoRelatedField(TableField):
         return results
 
     # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments
     def set_deserialized_value(self, result: dict, field_slug, deserialized_value, action, extra):
         model = extra['model']
+        # pylint: disable=protected-access
         pk_name = model._meta.get_field(field_slug).remote_field.model._meta.pk.name
         result[f'{field_slug}_{pk_name}'] = deserialized_value
 
