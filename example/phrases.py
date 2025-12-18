@@ -1,16 +1,18 @@
 
 RU_PAYMENT_CREATE_RESULT = '''
-<h3>Платеж успешно создан. Данные платежа:</h3>
+<h3>Платеж успешно создан!</h3>
+%(desctiption)s<br>
 <br>
-gateway_id=%(gateway_id)s
-<br><br>
+Данные платежа:<br>
+gateway_id=%(gateway_id)s<br>
 redirect_url: <a href="%(redirect_url)s" target="_blank"/>%(redirect_url)s</a>
 '''
 EN_PAYMENT_CREATE_RESULT = '''
-<h3>The payment was created successfully. Payment details:</h3>
-<br><br>
-gateway_id=%(gateway_id)s
-<br><br>
+<h3>The payment was created successfully!</h3>
+%(desctiption)s<br>
+<br>
+Payment details:
+gateway_id=%(gateway_id)s<br>
 redirect_url: <a href="%(redirect_url)s" target="_blank"/>%(redirect_url)s</a>
 '''
 LANGUAGES_PHRASES = {
@@ -37,6 +39,7 @@ LANGUAGES_PHRASES = {
         'action_with_exception': 'Действие с ошибкой',
         'is_throw_error': 'Выбросить ошибку?',
         'throw_error': 'Пример ошибки валидации поля.',
+        'exception_example': 'Пример ошибки исключения.',
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
@@ -61,5 +64,6 @@ LANGUAGES_PHRASES = {
         'action_with_exception': 'Action with exception',
         'is_throw_error': 'Is throw error?',
         'throw_error': 'Example of a field validation error.',
+        'exception_example': 'Exception example.',
     },
 }

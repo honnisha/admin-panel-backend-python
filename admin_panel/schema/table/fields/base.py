@@ -21,12 +21,12 @@ class TableField(abc.ABC):
     # Table header parameters
     header: dict | None = None
 
-    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
         schema = {}
         schema['type'] = self._type
 
-        schema['label'] = language.get_text(self.label) or field_slug
-        schema['help_text'] = language.get_text(self.help_text)
+        schema['label'] = language_manager.get_text(self.label) or field_slug
+        schema['help_text'] = language_manager.get_text(self.help_text)
         schema['header'] = self.header
         schema['read_only'] = self.read_only
         schema['default'] = self.default
@@ -61,8 +61,8 @@ class IntegerField(TableField):
 
     choices: List[Tuple[str, int]] | None = None
 
-    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
-        schema = super().generate_schema(user, field_slug, language)
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language_manager)
 
         schema['choices'] = self.choices
 
@@ -84,8 +84,8 @@ class StringField(TableField):
 
     choices: List[Tuple[str, str]] | None = None
 
-    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
-        schema = super().generate_schema(user, field_slug, language)
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language_manager)
 
         schema['choices'] = self.choices
 
@@ -144,8 +144,8 @@ class ImageField(TableField):
     preview_max_height: int = 100
     preview_max_width: int = 100
 
-    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
-        schema = super().generate_schema(user, field_slug, language)
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language_manager)
 
         if self.preview_max_height is not None:
             schema['preview_max_height'] = self.preview_max_height
@@ -163,6 +163,8 @@ class ImageField(TableField):
 class ChoiceField(TableField):
     _type: str = 'choice'
 
+    choices: Any | None = None
+
     # https://vuetifyjs.com/en/styles/colors/#classes
     tag_colors: dict | None = None
 
@@ -170,11 +172,16 @@ class ChoiceField(TableField):
     variant: str = 'elevated'
     size: str = 'default'
 
-    def generate_schema(self, user, field_slug, language: LanguageManager) -> dict:
-        schema = super().generate_schema(user, field_slug, language)
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language_manager)
+
+        schema['choices'] = self.choices
 
         schema['tag_colors'] = self.tag_colors
         schema['size'] = self.size
         schema['variant'] = self.variant
 
         return schema
+
+    async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
+        return {'value': value, 'title': value.capitalize() if value else value}

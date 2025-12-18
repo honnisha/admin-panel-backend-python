@@ -22,9 +22,9 @@ class Group(abc.ABC):
             if not issubclass(category.__class__, Category):
                 raise TypeError(f'Category "{category}" is not instance of Category subclass')
 
-    def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
+    def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> dict:
         result = {
-            'title': language.get_text(self.title) or self.slug,
+            'title': language_manager.get_text(self.title) or self.slug,
             'icon': self.icon,
             'categories': {},
         }
@@ -37,7 +37,7 @@ class Group(abc.ABC):
             if category.slug in result['categories']:
                 raise KeyError(f'Group slug:"{self.slug}" already have category slug:"{category.slug}"')
 
-            result['categories'][category.slug] = category.generate_schema(user, language)
+            result['categories'][category.slug] = category.generate_schema(user, language_manager)
 
         return result
 

@@ -48,19 +48,19 @@ class CategoryTable(Category):
         fn = getattr(self, 'update', None)
         return asyncio.iscoroutinefunction(fn)
 
-    def generate_schema(self, user, language: LanguageManager) -> dict:
-        schema = super().generate_schema(user, language)
+    def generate_schema(self, user, language_manager: LanguageManager) -> dict:
+        schema = super().generate_schema(user, language_manager)
         table = {}
 
         table_schema = getattr(self, 'table_schema', None)
         if not table_schema or not issubclass(table_schema.__class__, FieldsSchema):
             raise AttributeError(f'Admin category {self.__class__} must have table_schema instance of FieldsSchema')
 
-        table['table_schema'] = self.table_schema.generate_schema(user, language)
+        table['table_schema'] = self.table_schema.generate_schema(user, language_manager)
         table['ordering_fields'] = self.ordering_fields
 
         table['search_enabled'] = self.search_enabled
-        table['search_help'] = language.get_text(self.search_help)
+        table['search_help'] = language_manager.get_text(self.search_help)
 
         table['pk_name'] = self.pk_name
         table['can_retrieve'] = self.has_retrieve
@@ -70,7 +70,7 @@ class CategoryTable(Category):
 
         table['table_filters'] = {}
         if self.table_filters:
-            table['table_filters'] = self.table_filters.generate_schema(user, language)
+            table['table_filters'] = self.table_filters.generate_schema(user, language_manager)
 
         actions = {}
         for attribute_name in dir(self):
@@ -81,14 +81,14 @@ class CategoryTable(Category):
             if asyncio.iscoroutinefunction(attribute) and getattr(attribute, '__action__', False):
                 action = copy.copy(attribute.action_info)
 
-                action['title'] = language.get_text(action.get('title'))
-                action['description'] = language.get_text(action.get('description'))
-                action['confirmation_text'] = language.get_text(action.get('confirmation_text'))
+                action['title'] = language_manager.get_text(action.get('title'))
+                action['description'] = language_manager.get_text(action.get('description'))
+                action['confirmation_text'] = language_manager.get_text(action.get('confirmation_text'))
 
                 form_schema = action['form_schema']
                 if form_schema:
                     try:
-                        action['form_schema'] = form_schema.generate_schema(user, language)
+                        action['form_schema'] = form_schema.generate_schema(user, language_manager)
                     except Exception as e:
                         msg = f'Action {attribute} form schema {form_schema} error: {e}'
                         raise Exception(msg) from e
@@ -114,7 +114,7 @@ class CategoryTable(Category):
             request: Request,
             action: str,
             action_data: ActionData,
-            language: LanguageManager,
+            language_manager: LanguageManager,
             user: UserABC,
     ) -> ActionResult:
         action_fn = self._get_action_fn(action)
@@ -133,18 +133,12 @@ class CategoryTable(Category):
 
             result: ActionResult = await action_fn(action_data)
         except AdminAPIException as e:
-            language.translate_dataclass(e)
             raise e
         except Exception as e:
             raise AdminAPIException(
                 APIError(message=str(e), code='user_action_error'),
                 status_code=500,
             ) from e
-
-        if result.message:
-            result.message.text = language.get_text(result.message.text)
-
-        result.persistent_message = language.get_text(result.persistent_message)
 
         return result
 
@@ -156,7 +150,7 @@ class CategoryTable(Category):
 
     # pylint: disable=too-many-arguments
     @abc.abstractmethod
-    async def get_list(self, list_data: ListData, user: UserABC, language: LanguageManager) -> TableListResult:
+    async def get_list(self, list_data: ListData, user: UserABC, language_manager: LanguageManager) -> TableListResult:
         raise NotImplementedError()
 
 #     async def retrieve(self, pk: Any, user: UserABC) -> Optional[dict]:

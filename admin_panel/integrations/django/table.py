@@ -116,7 +116,7 @@ class DjangoAdminBase(DjangoAdminAutocomplete, CategoryTable):
         if not self.title:
             self.title = fix_str(self.get_model()._meta.verbose_name_plural)
 
-    async def get_list(self, list_data: ListData, user: UserABC, language: LanguageManager) -> TableListResult:
+    async def get_list(self, list_data: ListData, user: UserABC, language_manager: LanguageManager) -> TableListResult:
         from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
 
         data = []

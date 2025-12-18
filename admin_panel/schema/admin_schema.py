@@ -37,7 +37,7 @@ class AdminSchema:
         return self.language_manager_class(language_slug)
 
     def generate_schema(self, user: UserABC, language_slug: str | None) -> AdminSchemaData:
-        language: LanguageManager = self.get_language_manager(language_slug)
+        language_manager: LanguageManager = self.get_language_manager(language_slug)
 
         groups = {}
 
@@ -46,7 +46,7 @@ class AdminSchema:
                 msg = f'Category group {type(group).__name__}.slug is empty'
                 raise AttributeError(msg)
 
-            groups[group.slug] = group.generate_schema(user, language)
+            groups[group.slug] = group.generate_schema(user, language_manager)
 
         return AdminSchemaData(
             groups=groups,

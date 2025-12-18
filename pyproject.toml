@@ -1,10 +1,11 @@
 [project]
 name = "admin-panel"
-version = "0.4.0"
+version = "0.6.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "asgiref>=3.11.0",
     "faker>=38.2.0",
     "fastapi>=0.115.8",
     "jinja2>=3.1.6",

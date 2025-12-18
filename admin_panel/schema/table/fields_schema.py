@@ -95,10 +95,10 @@ class FieldsSchema:
 
         return self._fields_list
 
-    def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
+    def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> dict:
         fields_schema = {}
         fields_schema['fields'] = {
-            field_slug: field.generate_schema(user, field_slug, language)
+            field_slug: field.generate_schema(user, field_slug, language_manager)
             for field_slug, field in self.get_fields().items()
         }
         return fields_schema

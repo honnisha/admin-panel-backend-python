@@ -15,8 +15,8 @@ class DjangoRelatedField(TableField):
     many: bool = False
     _type: str = 'related'
 
-    def generate_schema(self, user: UserABC, field_slug, language: LanguageManager) -> dict:
-        schema = super().generate_schema(user, field_slug, language)
+    def generate_schema(self, user: UserABC, field_slug, language_manager: LanguageManager) -> dict:
+        schema = super().generate_schema(user, field_slug, language_manager)
         schema['many'] = self.many
         return schema
 

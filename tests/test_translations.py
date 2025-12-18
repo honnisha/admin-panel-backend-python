@@ -19,7 +19,6 @@ async def test_translate_exception(mocker):
         error_code='test',
     )
     language_manager = CustomLanguageManager('ru')
-    language_manager.translate_dataclass(exception)
 
     translation = {
         'error': {
@@ -35,4 +34,10 @@ async def test_translate_exception(mocker):
         'error_code': 'test',
         'status_code': 400,
     }
-    assert exception.model_dump(mode='json') == translation
+    assert exception.model_dump(mode='json', context={'language_manager': language_manager}) == translation
+
+
+@pytest.mark.asyncio
+async def test_translate_context(mocker):
+    CustomLanguageManager('ru')
+    assert str(_('throw_error')) == 'Пример ошибки валидации поля.'

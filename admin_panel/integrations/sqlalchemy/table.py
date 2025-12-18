@@ -19,7 +19,7 @@ class SQLAlchemyDeleteAction:
 
 
 class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
-    async def get_list(self, list_data: ListData, user: UserABC, language: LanguageManager) -> TableListResult:
+    async def get_list(self, list_data: ListData, user: UserABC, language_manager: LanguageManager) -> TableListResult:
         return TableListResult(
             data=[],
             total_count=0,

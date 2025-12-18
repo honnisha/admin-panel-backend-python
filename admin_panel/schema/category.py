@@ -17,9 +17,9 @@ class Category(abc.ABC):
 
     _type_slug: ClassVar[str]
 
-    def generate_schema(self, user: UserABC, language: LanguageManager) -> dict:
+    def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> dict:
         return {
-            'title': language.get_text(self.title) or self.slug,
+            'title': language_manager.get_text(self.title) or self.slug,
             'icon': self.icon,
             'type': self._type_slug,
         }

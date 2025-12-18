@@ -25,15 +25,16 @@ async def table_list(request: Request, group: str, category: str, list_data: Lis
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
 
     language_slug = request.headers.get('Accept-Language')
-    language: LanguageManager = schema.get_language_manager(language_slug)
+    language_manager: LanguageManager = schema.get_language_manager(language_slug)
+    context = {'language_manager': language_manager}
 
     try:
-        result: TableListResult = await schema_category.get_list(list_data, user, language)
+        result: TableListResult = await schema_category.get_list(list_data, user, language_manager)
     except AdminAPIException as e:
-        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 
     try:
-        return JSONResponse(content=result.model_dump(mode='json'))
+        return JSONResponse(content=result.model_dump(mode='json', context=context))
     except Exception as e:
         logger.exception('Admin list error: %s; result: %s', e, result)
         raise HTTPException(status_code=500, detail=f"Content error: {e}") from e
@@ -61,16 +62,22 @@ async def table_retrieve(request: Request, group: str, category: str, pk: Any):
     responses={400: {"model": APIError}},
 )
 async def table_create(request: Request, group: str, category: str):
+    schema: AdminSchema = request.app.state.schema
+
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
     if not schema_category.has_create:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for create")
 
+    language_slug = request.headers.get('Accept-Language')
+    language_manager: LanguageManager = schema.get_language_manager(language_slug)
+    context = {'language_manager': language_manager}
+
     try:
         result: CreateResult = await schema_category.create(await request.json(), user)
     except AdminAPIException as e:
-        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 
-    return JSONResponse(content=result.model_dump(mode='json'))
+    return JSONResponse(content=result.model_dump(mode='json', context=context))
 
 
 @router.patch(
@@ -78,16 +85,22 @@ async def table_create(request: Request, group: str, category: str):
     responses={400: {"model": APIError}},
 )
 async def table_update(request: Request, group: str, category: str, pk: Any) -> UpdateResult:
+    schema: AdminSchema = request.app.state.schema
+
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
     if not schema_category.has_update:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for update")
 
+    language_slug = request.headers.get('Accept-Language')
+    language_manager: LanguageManager = schema.get_language_manager(language_slug)
+    context = {'language_manager': language_manager}
+
     try:
         result: UpdateResult = await schema_category.update(pk, await request.json(), user)
     except AdminAPIException as e:
-        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 
-    return JSONResponse(content=result.model_dump(mode='json'))
+    return JSONResponse(content=result.model_dump(mode='json', context=context))
 
 
 @router.post(path='/{group}/{category}/action/{action}/')
@@ -97,14 +110,15 @@ async def table_action(request: Request, group: str, category: str, action: str,
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
 
     language_slug = request.headers.get('Accept-Language')
-    language: LanguageManager = schema.get_language_manager(language_slug)
+    language_manager: LanguageManager = schema.get_language_manager(language_slug)
+    context = {'language_manager': language_manager}
 
     try:
         # pylint: disable=protected-access
         result: ActionResult = await schema_category._perform_action(
-            request, action, action_data, language, user,
+            request, action, action_data, language_manager, user,
         )
     except AdminAPIException as e:
-        return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
+        return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 
-    return JSONResponse(content=result.model_dump(mode='json'))
+    return JSONResponse(content=result.model_dump(mode='json', context=context))

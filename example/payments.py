@@ -37,6 +37,7 @@ class PaymentFieldsSchema(schema.FieldsSchema):
     status = schema.ChoiceField(
         label=_('status'),
         tag_colors=STATUS_COLORS,
+        choices=list({'value': k, 'title': k.capitalize()} for k in STATUS_COLORS),
     )
     # image = schema.ImageField(label=_('image'))
     created_at = schema.DateTimeField(label=_('created_at'), read_only=True)
@@ -93,8 +94,10 @@ class PaymentsAdmin(schema.CategoryTable):
     )
     async def create_payment(self, action_data: ActionData):
         await asyncio.sleep(1)
+        fake = Faker()
         msg = _('payment_create_result') % {
             'gateway_id': str(uuid.uuid4()),
+            'desctiption': fake.sentence(nb_words=100),
             'redirect_url': 'https://www.google.com',
         }
         return ActionResult(persistent_message=msg)
@@ -112,7 +115,7 @@ class PaymentsAdmin(schema.CategoryTable):
     @admin_action(title=_('action_with_exception'), allow_empty_selection=True)
     async def action_with_exception(self, action_data: ActionData):
         await asyncio.sleep(0.5)
-        raise Exception('Exception desctiption')
+        raise Exception(_('exception_example'))
 
     def _get_data(self, pk):
         fake = Faker()
@@ -132,8 +135,10 @@ class PaymentsAdmin(schema.CategoryTable):
 
     # pylint: disable=too-many-arguments
     async def get_list(
-        self, list_data: schema.ListData, user: auth.UserABC, language: LanguageManager
+        self, list_data: schema.ListData, user: auth.UserABC, language_manager: LanguageManager
     ) -> schema.TableListResult:
+        await asyncio.sleep(0.2)
+
         data = []
         total_count = 5039
 
@@ -154,4 +159,5 @@ class PaymentsAdmin(schema.CategoryTable):
         return line
 
     async def update(self, pk: Any, data: dict, user: auth.UserABC) -> schema.UpdateResult:
+        await asyncio.sleep(0.5)
         return schema.UpdateResult(pk=0)
