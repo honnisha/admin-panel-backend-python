@@ -12,14 +12,14 @@ from admin_panel.schema.table.category_table import CategoryTable
 from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
 from admin_panel.translations import LanguageManager
 
-router = APIRouter(prefix="/table", tags=["table"])
+router = APIRouter(prefix="/table", tags=["Category - Table"])
 
 logger = logging.getLogger('admin_panel')
 
 
 # pylint: disable=too-many-arguments
 @router.post(path='/{group}/{category}/list/')
-async def table_list(request: Request, group: str, category: str, list_data: ListData):
+async def table_list(request: Request, group: str, category: str, list_data: ListData) -> TableListResult:
     schema: AdminSchema = request.app.state.schema
 
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
@@ -41,7 +41,7 @@ async def table_list(request: Request, group: str, category: str, list_data: Lis
 
 
 @router.post(path='/{group}/{category}/retrieve/{pk}/')
-async def table_retrieve(request: Request, group: str, category: str, pk: Any):
+async def table_retrieve(request: Request, group: str, category: str, pk: Any) -> dict:
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
     if not schema_category.has_retrieve:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for retrive")
@@ -61,7 +61,7 @@ async def table_retrieve(request: Request, group: str, category: str, pk: Any):
     path='/{group}/{category}/create/',
     responses={400: {"model": APIError}},
 )
-async def table_create(request: Request, group: str, category: str):
+async def table_create(request: Request, group: str, category: str) -> CreateResult:
     schema: AdminSchema = request.app.state.schema
 
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
@@ -103,8 +103,17 @@ async def table_update(request: Request, group: str, category: str, pk: Any) -> 
     return JSONResponse(content=result.model_dump(mode='json', context=context))
 
 
-@router.post(path='/{group}/{category}/action/{action}/')
-async def table_action(request: Request, group: str, category: str, action: str, action_data: ActionData) -> ActionResult:
+@router.post(
+    path='/{group}/{category}/action/{action}/',
+    responses={400: {"model": APIError}},
+)
+async def table_action(
+        request: Request,
+        group: str,
+        category: str,
+        action: str,
+        action_data: ActionData,
+) -> ActionResult:
     schema: AdminSchema = request.app.state.schema
 
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)

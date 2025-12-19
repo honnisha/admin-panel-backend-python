@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from admin_panel.api.utils import get_category
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult
 
-router = APIRouter(prefix="/autocomplete", tags=["autocomplete"])
+router = APIRouter(prefix="/autocomplete", tags=["Autocomplete"])
 
 logger = logging.getLogger('admin_panel')
 

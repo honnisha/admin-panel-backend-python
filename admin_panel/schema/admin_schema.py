@@ -1,19 +1,19 @@
 import importlib.metadata
-from typing import List, Optional, Type
+from typing import Dict, List, Optional, Type
 from urllib.parse import urljoin
 
 from fastapi import Request
 from pydantic.dataclasses import dataclass
 
 from admin_panel.auth import UserABC
-from admin_panel.schema.group import Group
+from admin_panel.schema.group import Group, GroupSchemaData
 from admin_panel.translations import LanguageManager, TranslateText
 from admin_panel.utils import DataclassBase
 
 
 @dataclass
 class AdminSchemaData(DataclassBase):
-    groups: dict
+    groups: Dict[str, GroupSchemaData]
     profile: UserABC
 
 
@@ -22,6 +22,8 @@ class AdminSchema:
     groups: List[Group]
 
     title: str | TranslateText | None = 'Admin'
+    description: str | TranslateText | None = None
+
     favicon_image: str = '/admin/static/favicon.ico'
     backend_prefix = None
     static_prefix = None

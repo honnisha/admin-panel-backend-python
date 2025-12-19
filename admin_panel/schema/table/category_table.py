@@ -4,10 +4,12 @@ import copy
 from typing import Awaitable, List
 
 from fastapi import HTTPException, Request
+from pydantic import Field
 
 from admin_panel.auth import UserABC
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.schema import Category
+from admin_panel.schema.category import TableInfoSchemaData
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult, ListData, TableListResult
@@ -24,7 +26,7 @@ class CategoryTable(Category):
     table_schema: FieldsSchema
     table_filters: FieldsSchema | None = None
 
-    ordering_fields: List[str] = []
+    ordering_fields: List[str] = Field(default_factory=list)
 
     pk_name: str = 'id'
 
@@ -50,27 +52,27 @@ class CategoryTable(Category):
 
     def generate_schema(self, user, language_manager: LanguageManager) -> dict:
         schema = super().generate_schema(user, language_manager)
-        table = {}
 
         table_schema = getattr(self, 'table_schema', None)
         if not table_schema or not issubclass(table_schema.__class__, FieldsSchema):
             raise AttributeError(f'Admin category {self.__class__} must have table_schema instance of FieldsSchema')
 
-        table['table_schema'] = self.table_schema.generate_schema(user, language_manager)
-        table['ordering_fields'] = self.ordering_fields
+        table = TableInfoSchemaData(
+            table_schema=self.table_schema.generate_schema(user, language_manager),
+            ordering_fields=self.ordering_fields,
 
-        table['search_enabled'] = self.search_enabled
-        table['search_help'] = language_manager.get_text(self.search_help)
+            search_enabled=self.search_enabled,
+            search_help=language_manager.get_text(self.search_help),
 
-        table['pk_name'] = self.pk_name
-        table['can_retrieve'] = self.has_retrieve
+            pk_name=self.pk_name,
+            can_retrieve=self.has_retrieve,
 
-        table['can_create'] = self.has_create
-        table['can_update'] = self.has_update
+            can_create=self.has_create,
+            can_update=self.has_update,
+        )
 
-        table['table_filters'] = {}
         if self.table_filters:
-            table['table_filters'] = self.table_filters.generate_schema(user, language_manager)
+            table.table_filters = self.table_filters.generate_schema(user, language_manager)
 
         actions = {}
         for attribute_name in dir(self):
@@ -95,9 +97,8 @@ class CategoryTable(Category):
 
                 actions[attribute_name] = action
 
-        table['actions'] = actions
-
-        schema['table_info'] = table
+        table.actions = actions
+        schema.table_info = table
         return schema
 
     def _get_action_fn(self, action: str) -> Awaitable | None:

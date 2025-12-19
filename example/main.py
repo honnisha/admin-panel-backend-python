@@ -9,9 +9,9 @@ from admin_panel.auth import AdminAuthentication, AuthData, AuthResult, UserABC,
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
-from example.graphs import GraphsExample
-from example.payments import PaymentsAdmin
 from example.phrases import LANGUAGES_PHRASES
+from example.sections.graphs import GraphsExample
+from example.sections.payments import PaymentsAdmin
 
 
 class LogConfig(BaseModel):
@@ -89,6 +89,7 @@ class FakeAdminAuthentication(AdminAuthentication):
 admin_app = generate_app(
     admin_schema,
     auth=FakeAdminAuthentication(),
+    use_scalar=True,
     debug=True,
 )
 

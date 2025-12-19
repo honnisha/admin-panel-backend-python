@@ -1,7 +1,7 @@
 import functools
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel, Field, validate_call
 from pydantic.dataclasses import dataclass
 
 from admin_panel.schema.table.fields_schema import FieldsSchema
@@ -10,10 +10,10 @@ from admin_panel.translations import DataclassBase, TranslateText
 
 
 class ActionData(BaseModel):
-    pks: List[Any]
-    form_data: dict
-    filters: ListFilters
-    send_to_all: bool
+    pks: List[Any] = Field(default_factory=list)
+    form_data: dict = Field(default_factory=dict)
+    filters: ListFilters = Field(default_factory=ListFilters)
+    send_to_all: bool = False
 
 
 @dataclass

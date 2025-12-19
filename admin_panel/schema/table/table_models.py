@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
 
 from admin_panel.utils import DataclassBase
@@ -8,13 +8,13 @@ from admin_panel.utils import DataclassBase
 
 @dataclass
 class TableListResult(DataclassBase):
-    data: List
+    data: List[dict]
     total_count: int
 
 
 class ListFilters(BaseModel):
-    search: str | None
-    filters: Dict[str, Any]
+    search: str | None = None
+    filters: Dict[str, Any] = Field(default_factory=dict)
 
 
 class AutocompleteData(BaseModel):
@@ -22,7 +22,7 @@ class AutocompleteData(BaseModel):
     field_slug: str
     is_filter: bool
     form_data: dict
-    existed_choices: List[Any] = []
+    existed_choices: List[Any] = Field(default_factory=list)
     action_name: str | None = None
     limit: int = 25
 
@@ -37,7 +37,6 @@ class AutocompleteResult(BaseModel):
 
 
 class ListData(BaseModel):
-    inline_action: bool
     page: int = 1
     limit: int = 25
     filters: ListFilters

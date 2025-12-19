@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from admin_panel.auth import AdminAuthentication, AuthData, AuthResult
 from admin_panel.exceptions import AdminAPIException, APIError
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post(

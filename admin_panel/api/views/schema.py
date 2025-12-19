@@ -5,7 +5,7 @@ from admin_panel.exceptions import AdminAPIException
 from admin_panel.auth import AdminAuthentication
 from admin_panel.schema import AdminSchema, AdminSchemaData
 
-router = APIRouter(prefix="/schema", tags=["schema"])
+router = APIRouter(prefix="/schema", tags=["Main admin schema"])
 
 
 @router.get(path='/')

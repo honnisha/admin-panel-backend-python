@@ -1,36 +1,31 @@
 import abc
-from typing import Any, List, Tuple
+from typing import Any, ClassVar, List, Tuple
 
 from pydantic.dataclasses import dataclass
 
 from admin_panel.exceptions import FieldError
+from admin_panel.schema.category import FieldSchemaData
 from admin_panel.translations import LanguageManager, TranslateText
 from admin_panel.utils import DeserializeAction
 
 
 @dataclass
-class TableField(abc.ABC):
-    _type: str
+class TableField(abc.ABC, FieldSchemaData):
+    _type: ClassVar[str]
 
     label: str | TranslateText | None = None
     help_text: str | TranslateText | None = None
-    read_only: bool = False
-    default: Any | None = None
-    required: bool = False
 
-    # Table header parameters
-    header: dict | None = None
-
-    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
-        schema = {}
-        schema['type'] = self._type
-
-        schema['label'] = language_manager.get_text(self.label) or field_slug
-        schema['help_text'] = language_manager.get_text(self.help_text)
-        schema['header'] = self.header
-        schema['read_only'] = self.read_only
-        schema['default'] = self.default
-        schema['required'] = self.required
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
+        schema = FieldSchemaData(
+            type=self._type,
+            label=language_manager.get_text(self.label) or field_slug,
+            help_text=language_manager.get_text(self.help_text),
+            header=self.header,
+            read_only=self.read_only,
+            default=self.default,
+            required=self.required,
+        )
 
         return schema
 
@@ -54,58 +49,56 @@ class TableField(abc.ABC):
 
 @dataclass
 class IntegerField(TableField):
-    _type: str = 'integer'
+    _type = 'integer'
 
     max_value: int | None = None
     min_value: int | None = None
 
-    choices: List[Tuple[str, int]] | None = None
-
-    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
-        schema['choices'] = self.choices
+        schema.choices = self.choices
 
         if self.max_value is not None:
-            schema['max_value'] = self.max_value
+            schema.max_value = self.max_value
 
         if self.min_value is not None:
-            schema['min_value'] = self.min_value
+            schema.min_value = self.min_value
 
         return schema
 
 
 @dataclass
 class StringField(TableField):
-    _type: str = 'string'
+    _type = 'string'
 
     min_length: int | None = None
     max_length: int | None = None
 
     choices: List[Tuple[str, str]] | None = None
 
-    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
-        schema['choices'] = self.choices
+        schema.choices = self.choices
 
         if self.min_length is not None:
-            schema['min_length'] = self.min_length
+            schema.min_length = self.min_length
 
         if self.max_length is not None:
-            schema['max_length'] = self.max_length
+            schema.max_length = self.max_length
 
         return schema
 
 
 @dataclass
 class BooleanField(TableField):
-    _type: str = 'boolean'
+    _type = 'boolean'
 
 
 @dataclass
 class DateTimeField(TableField):
-    _type: str = 'datetime'
+    _type = 'datetime'
 
     format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -117,7 +110,7 @@ class DateTimeField(TableField):
 
 @dataclass
 class DateTimeRangeField(TableField):
-    _type: str = 'datetime_range'
+    _type = 'datetime_range'
 
     format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -129,29 +122,29 @@ class DateTimeRangeField(TableField):
 
 @dataclass
 class JSONField(TableField):
-    _type: str = 'json'
+    _type = 'json'
 
 
 @dataclass
 class FileField(TableField):
-    _type: str = 'file'
+    _type = 'file'
 
 
 @dataclass
 class ImageField(TableField):
-    _type: str = 'image'
+    _type = 'image'
 
     preview_max_height: int = 100
     preview_max_width: int = 100
 
-    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
         if self.preview_max_height is not None:
-            schema['preview_max_height'] = self.preview_max_height
+            schema.preview_max_height = self.preview_max_height
 
         if self.preview_max_width is not None:
-            schema['preview_max_width'] = self.preview_max_width
+            schema.preview_max_width = self.preview_max_width
 
         return schema
 
@@ -161,9 +154,7 @@ class ImageField(TableField):
 
 @dataclass
 class ChoiceField(TableField):
-    _type: str = 'choice'
-
-    choices: Any | None = None
+    _type = 'choice'
 
     # https://vuetifyjs.com/en/styles/colors/#classes
     tag_colors: dict | None = None
@@ -172,14 +163,14 @@ class ChoiceField(TableField):
     variant: str = 'elevated'
     size: str = 'default'
 
-    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> dict:
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
-        schema['choices'] = self.choices
+        schema.choices = self.choices
 
-        schema['tag_colors'] = self.tag_colors
-        schema['size'] = self.size
-        schema['variant'] = self.variant
+        schema.tag_colors = self.tag_colors
+        schema.size = self.size
+        schema.variant = self.variant
 
         return schema
 

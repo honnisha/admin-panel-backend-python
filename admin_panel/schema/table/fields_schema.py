@@ -5,6 +5,7 @@ from pydantic.dataclasses import dataclass
 
 from admin_panel.auth import UserABC
 from admin_panel.exceptions import AdminAPIException, APIError, FieldError
+from admin_panel.schema.category import FieldsSchemaData
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.translations import LanguageManager
@@ -95,9 +96,9 @@ class FieldsSchema:
 
         return self._fields_list
 
-    def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> dict:
-        fields_schema = {}
-        fields_schema['fields'] = {
+    def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> FieldsSchemaData:
+        fields_schema = FieldsSchemaData()
+        fields_schema.fields = {
             field_slug: field.generate_schema(user, field_slug, language_manager)
             for field_slug, field in self.get_fields().items()
         }

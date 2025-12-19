@@ -31,8 +31,9 @@ class TranslateText(DataclassBase):
         return language_manager.get_text(self)
 
     def __str__(self):
-        lm = getattr(_active, '_language_manager')
+        lm = getattr(_active, '_language_manager', None)
         if not lm:
+
             raise AttributeError(f'language_manager is not in local scope for translation: {locals()}')
 
         if not issubclass(type(lm), LanguageManager):
@@ -42,7 +43,7 @@ class TranslateText(DataclassBase):
 
     def __mod__(self, other):
         if not isinstance(other, dict):
-            raise AttributeError('TranslateText only supports dict trough % operand')
+            raise AttributeError('TranslateText only dict is supported trough % operand')
         self.translation_kwargs = other
         return self
 

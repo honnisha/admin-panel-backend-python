@@ -9,7 +9,7 @@ from admin_panel.schema.admin_schema import AdminSchema
 from admin_panel.schema.graphs.category_graphs import CategoryGraphs, GraphData, GraphsDataResult
 from admin_panel.translations import LanguageManager
 
-router = APIRouter(prefix="/graph", tags=["graph"])
+router = APIRouter(prefix="/graph", tags=["Category - Graph"])
 
 logger = logging.getLogger('admin_panel')
 
