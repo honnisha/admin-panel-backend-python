@@ -1,18 +1,24 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from admin_panel.exceptions import AdminAPIException
 from admin_panel.auth import AdminAuthentication
+from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.schema import AdminSchema, AdminSchemaData
 
 router = APIRouter(prefix="/schema", tags=["Main admin schema"])
 
 
-@router.get(path='/')
+@router.get(
+    path='/',
+    responses={400: {"model": APIError}},
+)
 async def schema_handler(request: Request) -> AdminSchemaData:
+    '''
+    Request for retrieving the admin panel schema, including all sections and their contents.
+    '''
     schema: AdminSchema = request.app.state.schema
 
-    auth: AdminAuthentication = request.app.state.auth
+    auth: AdminAuthentication = schema.auth
     try:
         user = await auth.authenticate(request.headers)
     except AdminAPIException as e:

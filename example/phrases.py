@@ -1,3 +1,32 @@
+RU_ADMIN_DESCRIPTION = '''
+Используется для демонстрации возможностей управления, настройки и контроля системы.<br>
+<br>
+Данные и действия в этом режиме не влияют на рабочее окружение.
+'''
+EN_ADMIN_DESCRIPTION = '''
+Used to demonstrate system management, configuration, and monitoring capabilities.
+<br><br>
+Data and actions in this mode do not affect the production environment.
+'''
+
+RU_LOGIN_GREETINGS_MESSAGE = '''
+<div class="text-h6 mb-1">
+  Демо режим
+</div>
+<div class="text-caption">
+  Логин: admin<br>
+  Пароль: admin
+</div>
+'''
+EN_LOGIN_GREETINGS_MESSAGE = '''
+<div class="text-h6 mb-1">
+  Demo mode
+</div>
+<div class="text-caption">
+  Login: admin<br>
+  Password: admin
+</div>
+'''
 
 RU_PAYMENT_CREATE_RESULT = '''
 <h3>Платеж успешно создан!</h3>
@@ -18,6 +47,8 @@ redirect_url: <a href="%(redirect_url)s" target="_blank"/>%(redirect_url)s</a>
 LANGUAGES_PHRASES = {
     'ru': {
         'admin_title': 'Admin Panel Демо',
+        'admin_description': RU_ADMIN_DESCRIPTION,
+        'login_greetings_message': RU_LOGIN_GREETINGS_MESSAGE,
         'created_at': 'Время создания',
         'graphs_example': 'Пример графиков',
         'amount': 'Сумма',
@@ -43,6 +74,8 @@ LANGUAGES_PHRASES = {
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
+        'admin_description': EN_ADMIN_DESCRIPTION,
+        'login_greetings_message': EN_LOGIN_GREETINGS_MESSAGE,
         'created_at': 'Created time',
         'graphs_example': 'Graphs example',
         'amount': 'Amount',

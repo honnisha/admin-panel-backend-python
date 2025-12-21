@@ -6,7 +6,7 @@ from admin_panel.auth import AdminAuthentication
 
 
 async def get_user(request):
-    auth: AdminAuthentication = request.app.state.auth
+    auth: AdminAuthentication = request.app.state.schema.auth
     try:
         user = await auth.authenticate(request.headers)
     except AdminAPIException as e:

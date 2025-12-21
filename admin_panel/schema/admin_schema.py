@@ -1,11 +1,12 @@
-import importlib.metadata
-from typing import Dict, List, Optional, Type
-from urllib.parse import urljoin
+from typing import Any, Dict, List, Optional, Type
 
-from fastapi import Request
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic.dataclasses import dataclass
 
 from admin_panel.auth import UserABC
+from admin_panel.docs import build_redoc_docs, build_scalar_docs
 from admin_panel.schema.group import Group, GroupSchemaData
 from admin_panel.translations import LanguageManager, TranslateText
 from admin_panel.utils import DataclassBase
@@ -17,12 +18,24 @@ class AdminSchemaData(DataclassBase):
     profile: UserABC
 
 
+# pylint: disable=too-many-instance-attributes
+@dataclass
+class AdminSettingsData(DataclassBase):
+    title: str | TranslateText
+    description: str | TranslateText | None
+    login_greetings_message: str | TranslateText
+    logo_image: str | None
+    languages: Dict[str, str] | None
+
+
 @dataclass
 class AdminSchema:
     groups: List[Group]
+    auth: Any
 
     title: str | TranslateText | None = 'Admin'
     description: str | TranslateText | None = None
+    login_greetings_message: str | TranslateText | None = None
 
     favicon_image: str = '/admin/static/favicon.ico'
     backend_prefix = None
@@ -62,17 +75,9 @@ class AdminSchema:
 
         return None
 
-    async def get_settings(self, request: Request):
+    async def get_settings(self, request: Request) -> AdminSettingsData:
         language_slug = request.headers.get('Accept-Language')
         language_manager: LanguageManager = self.get_language_manager(language_slug)
-
-        backend_prefix = self.backend_prefix
-        if not backend_prefix:
-            backend_prefix = urljoin(str(request.base_url), '/admin/')
-
-        static_prefix = self.static_prefix
-        if not static_prefix:
-            static_prefix = urljoin(str(request.base_url), '/admin/static/')
 
         languages = None
         if language_manager.languages:
@@ -80,12 +85,46 @@ class AdminSchema:
             for k, v in language_manager.languages.items():
                 languages[k] = language_manager.get_text(v)
 
-        return {
-            'title': language_manager.get_text(self.title),
-            'logo_image': None,
-            'backend_prefix': backend_prefix,
-            'static_prefix': static_prefix,
-            'version': importlib.metadata.version('admin-panel'),
-            'api_timeout_ms': 1000 * 5,
-            'languages': languages,
-        }
+        return AdminSettingsData(
+            title=self.title,
+            description=self.description,
+            login_greetings_message=self.login_greetings_message,
+            logo_image=None,
+            languages=languages,
+        )
+
+    def generate_app(self, use_scalar=False, debug=False, allow_cors=True) -> FastAPI:
+        # pylint: disable=unused-variable
+        language_manager = self.get_language_manager(language_slug=None)
+
+        app = FastAPI(
+            title=language_manager.get_text(self.title),
+            description=language_manager.get_text(self.description),
+            debug=debug,
+            docs_url='/docs',
+            redoc_url=None,
+        )
+
+        if allow_cors:
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"]
+            )
+
+        app.mount("/static", StaticFiles(directory="admin_panel/static"), name="static")
+
+        app.state.schema = self
+
+        if use_scalar:
+            app.include_router(build_scalar_docs(app))
+
+        app.include_router(build_redoc_docs(app, redoc_url='/redoc'))
+
+        # pylint: disable=import-outside-toplevel
+        from admin_panel.api.routers import admin_panel_router
+        app.include_router(admin_panel_router)
+
+        return app

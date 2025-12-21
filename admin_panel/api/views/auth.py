@@ -12,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     responses={401: {"model": APIError}},
 )
 async def login(request: Request, auth_data: AuthData) -> AuthResult:
-    auth: AdminAuthentication = request.app.state.auth
+    auth: AdminAuthentication = request.app.state.schema.auth
     try:
         result: AuthResult = await auth.login(auth_data)
     except AdminAPIException as e:

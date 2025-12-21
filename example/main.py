@@ -1,10 +1,10 @@
+import asyncio
 import logging.config
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from admin_panel import generate_app, schema
+from admin_panel import schema
 from admin_panel.auth import AdminAuthentication, AuthData, AuthResult, UserABC, UserResult
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.translations import LanguageManager
@@ -49,9 +49,38 @@ class CustomLanguageManager(LanguageManager):
     languages_phrases = LANGUAGES_PHRASES
 
 
+LOGIN_GREETINGS_MESSAGE = '''
+<div class="text-h6 mb-1">
+  Demo mode
+</div>
+<div class="text-caption">
+  Login: admin<br>
+  Password: admin
+</div>
+'''
+
+
+class FakeAdminAuthentication(AdminAuthentication):
+    async def login(self, data: AuthData) -> AuthResult:
+        await asyncio.sleep(1.0)
+
+        if data.username != 'admin' or data.password != 'admin':
+            raise AdminAPIException(APIError(code='user_not_found'), status_code=401)
+
+        return AuthResult(token='test', user=UserResult(username='test_admin'))
+
+    async def authenticate(self, headers: dict) -> UserABC:
+        return UserABC(username='test_admin')
+
+
 admin_schema = schema.AdminSchema(
     title=_('admin_title'),
+    description=_('admin_description'),
+    login_greetings_message=_('login_greetings_message'),
+
+    auth=FakeAdminAuthentication(),
     language_manager_class=CustomLanguageManager,
+
     groups=[
         schema.Group(
             slug='payments',
@@ -74,31 +103,5 @@ admin_schema = schema.AdminSchema(
 
 app = FastAPI(debug=True)
 
-
-class FakeAdminAuthentication(AdminAuthentication):
-    async def login(self, data: AuthData) -> AuthResult:
-        if data.username != 'admin' and data.password != 'admin':
-            raise AdminAPIException(APIError(message='User not found', code='user_not_found'), status_code=401)
-
-        return AuthResult(token='test', user=UserResult(username='test_admin'))
-
-    async def authenticate(self, headers: dict) -> UserABC:
-        return UserABC(username='test_admin')
-
-
-admin_app = generate_app(
-    admin_schema,
-    auth=FakeAdminAuthentication(),
-    use_scalar=True,
-    debug=True,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
-)
-
+admin_app = admin_schema.generate_app(use_scalar=True, debug=True)
 app.mount('/admin', admin_app)
