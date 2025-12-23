@@ -50,8 +50,9 @@ class TableInfoSchemaData(DataclassBase):
     search_enabled: bool
     search_help: str | None
 
-    pk_name: str
+    pk_name: str | None
     can_retrieve: bool
+
     can_create: bool
     can_update: bool
 

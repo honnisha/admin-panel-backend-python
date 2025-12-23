@@ -1,4 +1,5 @@
 import abc
+import logging
 from typing import Dict, List
 
 from pydantic.dataclasses import dataclass
@@ -7,6 +8,8 @@ from admin_panel.auth import UserABC
 from admin_panel.schema.category import Category, CategorySchemaData
 from admin_panel.translations import LanguageManager, TranslateText
 from admin_panel.utils import DataclassBase
+
+logger = logging.getLogger('admin_panel')
 
 
 @dataclass
@@ -36,6 +39,9 @@ class Group(abc.ABC):
             icon=self.icon,
             categories={},
         )
+        if not self.categories:
+            logger.warning('Group "%s" %s.categories is empty!', self.slug, type(self).__name__)
+
         for category in self.categories:
 
             if not category.slug:

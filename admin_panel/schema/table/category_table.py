@@ -28,7 +28,7 @@ class CategoryTable(Category):
 
     ordering_fields: List[str] = Field(default_factory=list)
 
-    pk_name: str = 'id'
+    pk_name: str | None = None
 
     def __init__(self):
         if self.slug is None:
@@ -37,6 +37,9 @@ class CategoryTable(Category):
 
     @property
     def has_retrieve(self):
+        if not self.pk_name:
+            return False
+
         fn = getattr(self, 'retrieve', None)
         return asyncio.iscoroutinefunction(fn)
 
