@@ -22,6 +22,5 @@ async def test_exception_handle(mocker):
         'code': 'user_action_error',
         'field_errors': None,
         'message': 'Пример ошибки исключения.',
-        'persistent_message': None,
     }
     assert response.json() == response_data

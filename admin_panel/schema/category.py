@@ -3,6 +3,7 @@ from typing import Any, ClassVar, Dict, List
 
 from pydantic import Field
 from pydantic.dataclasses import dataclass
+from pydantic_core import core_schema
 
 from admin_panel.auth import UserABC
 from admin_panel.translations import LanguageManager, TranslateText
@@ -36,10 +37,14 @@ class FieldSchemaData(DataclassBase):
     preview_max_height: int | None = None
     preview_max_width: int | None = None
 
+    # ArrayField
+    array_type: str | None = None
+
 
 @dataclass
 class FieldsSchemaData(DataclassBase):
     fields: Dict[str, FieldSchemaData] = Field(default_factory=dict)
+    list_display: List[str] = Field(default_factory=list)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -47,20 +52,20 @@ class FieldsSchemaData(DataclassBase):
 class TableInfoSchemaData(DataclassBase):
     table_schema: FieldsSchemaData
 
-    search_enabled: bool
-    search_help: str | None
+    search_enabled: bool = Field(default=False)
+    search_help: str | None = Field(default=None)
 
-    pk_name: str | None
-    can_retrieve: bool
+    pk_name: str | None = Field(default=None)
+    can_retrieve: bool = Field(default=False)
 
-    can_create: bool
-    can_update: bool
+    can_create: bool = Field(default=False)
+    can_update: bool = Field(default=False)
 
-    table_filters: FieldsSchemaData | None = None
+    table_filters: FieldsSchemaData | None = Field(default=False)
 
     ordering_fields: List[str] = Field(default_factory=list)
 
-    actions: Dict[str, dict] | None = None
+    actions: Dict[str, dict] | None = Field(default_factory=dict)
 
 
 @dataclass
@@ -81,7 +86,6 @@ class CategorySchemaData(DataclassBase):
     graph_info: GraphInfoSchemaData | None = None
 
 
-@dataclass
 class Category(abc.ABC):
     slug: ClassVar[str]
     title: ClassVar[str | TranslateText | None] = None
@@ -96,4 +100,20 @@ class Category(abc.ABC):
             title=language_manager.get_text(self.title) or self.slug,
             icon=self.icon,
             type=self._type_slug,
+        )
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type: Any, handler: Any) -> core_schema.CoreSchema:
+        def validate(v: Any) -> "Category":
+            if isinstance(v, cls):
+                return v
+            raise TypeError(f"Expected {cls.__name__} instance")
+
+        return core_schema.no_info_plain_validator_function(
+            validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda v: repr(v),
+                info_arg=False,
+                return_schema=core_schema.str_schema(),
+            ),
         )

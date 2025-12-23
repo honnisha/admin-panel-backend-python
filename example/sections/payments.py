@@ -34,6 +34,7 @@ class PaymentFieldsSchema(schema.FieldsSchema):
     amount = schema.IntegerField(label=_('amount'))
     endpoint = schema.StringField(label=_('endpoint'))
     description = schema.StringField(label=_('description'))
+    other_field = schema.StringField(read_only=True)
     status = schema.ChoiceField(
         label=_('status'),
         tag_colors=STATUS_COLORS,
@@ -42,7 +43,7 @@ class PaymentFieldsSchema(schema.FieldsSchema):
     # image = schema.ImageField(label=_('image'))
     created_at = schema.DateTimeField(label=_('created_at'), read_only=True)
 
-    fields = [
+    list_display = [
         'id',
         'amount',
         'endpoint',
@@ -82,6 +83,7 @@ class PaymentsAdmin(schema.CategoryTable):
 
     table_filters = PaymentFiltersSchema()
     table_schema = PaymentFieldsSchema()
+    pk_name = 'id'
     ordering_fields = [
         'id',
     ]
@@ -129,6 +131,7 @@ class PaymentsAdmin(schema.CategoryTable):
             'status': status,
             'endpoint': fake.word(),
             'description': fake.sentence(nb_words=5),
+            'other_field': fake.word(),
             'image': f'https://picsum.photos/id/{5039-pk+1}/200/300',
             'created_at': datetime.datetime(2025, 6, 16, 9, 45, 29) - datetime.timedelta(hours=pk, minutes=pk),
         }
@@ -161,3 +164,6 @@ class PaymentsAdmin(schema.CategoryTable):
     async def update(self, pk: Any, data: dict, user: auth.UserABC) -> schema.UpdateResult:
         await asyncio.sleep(0.5)
         return schema.UpdateResult(pk=0)
+
+    async def create(self, data: dict, user: auth.UserABC) -> schema.CreateResult:
+        return schema.CreateResult(pk=0)

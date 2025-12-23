@@ -126,6 +126,19 @@ class JSONField(TableField):
 
 
 @dataclass
+class ArrayField(TableField):
+    _type = 'array'
+
+    array_type: str | None
+
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
+        schema = super().generate_schema(user, field_slug, language_manager)
+
+        schema.array_type = self.array_type
+
+        return schema
+
+@dataclass
 class FileField(TableField):
     _type = 'file'
 

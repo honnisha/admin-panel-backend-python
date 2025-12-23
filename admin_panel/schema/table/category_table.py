@@ -23,7 +23,7 @@ class CategoryTable(Category):
     search_enabled: bool = False
     search_help: str | TranslateText | None = None
 
-    table_schema: FieldsSchema
+    table_schema: FieldsSchema = None
     table_filters: FieldsSchema | None = None
 
     ordering_fields: List[str] = Field(default_factory=list)

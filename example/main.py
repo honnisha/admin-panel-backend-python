@@ -103,5 +103,7 @@ admin_schema = schema.AdminSchema(
 
 app = FastAPI(debug=True)
 
-admin_app = admin_schema.generate_app(use_scalar=True, debug=True)
+admin_app = admin_schema.generate_app(
+    include_scalar=True, include_docs=True, include_redoc=True, debug=True,
+)
 app.mount('/admin', admin_app)

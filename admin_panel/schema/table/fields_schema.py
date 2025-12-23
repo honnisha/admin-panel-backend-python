@@ -1,7 +1,7 @@
 import asyncio
-from typing import ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List
 
-from pydantic.dataclasses import dataclass
+from pydantic_core import core_schema
 
 from admin_panel.auth import UserABC
 from admin_panel.exceptions import AdminAPIException, APIError, FieldError
@@ -16,18 +16,40 @@ class DeserializeError(Exception):
     pass
 
 
-@dataclass
 class FieldsSchema:
     # Список полей
-    fields: ClassVar[List[str] | None] = None
+    fields: List[str] | None = None
+
+    # Список колонок, которые будут отображаться в таблице
+    list_display: List[str] | None = None
 
     # Для передачи параметра read_only = True внутрь поля
     readonly_fields: ClassVar[List | None] = None
 
+    # Generated fields
     _fields_list: List | None = None
 
-    # pylint: disable=too-many-branches
-    def __post_init__(self):
+    def __init__(self, list_display=None, fields=None, *args, **kwargs):
+        if fields:
+            self.fields = fields
+
+        if list_display:
+            self.list_display = list_display
+
+        self.post_init(*args, **kwargs)
+
+    def post_init(self, *args, **kwargs):
+        # Generation FunctionField
+        for attribute_name in dir(self):
+            if '__' in attribute_name:
+                continue
+
+            attribute = getattr(self, attribute_name)
+            if getattr(attribute, '__function_field__', False):
+                field = FunctionField(fn=attribute, **attribute.__kwargs__)
+                field.read_only = True
+                setattr(self, attribute.__name__, field)
+
         # Autogenerate fields
         if self.fields is None:
             self.fields = []
@@ -42,17 +64,6 @@ class FieldsSchema:
         if not self.fields:
             msg = f'Schema {type(self).__name__}.fields is empty'
             raise AttributeError(msg)
-
-        # Generation FunctionField
-        for attribute_name in dir(self):
-            if '__' in attribute_name:
-                continue
-
-            attribute = getattr(self, attribute_name)
-            if getattr(attribute, '__function_field__', False):
-                field = FunctionField(fn=attribute, **attribute.__kwargs__)
-                field.read_only = True
-                setattr(self, attribute.__name__, field)
 
         # Check for fields not listed in self.fields
         for attribute_name in dir(self):
@@ -73,8 +84,20 @@ class FieldsSchema:
 
                 field.read_only = True
 
+        if self.list_display is None:
+            self.list_display = self.fields
+
+        for field_slug in self.list_display:
+            if field_slug not in self.fields:
+                msg = f'Field "{field_slug}" inside {type(self).__name__}.list_display, but not presented as field'
+                raise AttributeError(msg)
+
     def _iter_fields(self):
         for attribute_name in self.fields:
+            if not isinstance(attribute_name, str):
+                msg = f'{type(self).__name__} field "{attribute_name}" must be string'
+                raise AttributeError(msg)
+
             attribute = getattr(self, attribute_name, None)
 
             if not attribute:
@@ -97,7 +120,9 @@ class FieldsSchema:
         return self._fields_list
 
     def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> FieldsSchemaData:
-        fields_schema = FieldsSchemaData()
+        fields_schema = FieldsSchemaData(
+            list_display=self.list_display,
+        )
         fields_schema.fields = {
             field_slug: field.generate_schema(user, field_slug, language_manager)
             for field_slug, field in self.get_fields().items()
@@ -144,3 +169,19 @@ class FieldsSchema:
                 status_code=400,
             )
         return result
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type: Any, handler: Any) -> core_schema.CoreSchema:
+        def validate(v: Any) -> "FieldsSchema":
+            if isinstance(v, cls):
+                return v
+            raise TypeError(f"Expected {cls.__name__} instance")
+
+        return core_schema.no_info_plain_validator_function(
+            validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda v: repr(v),
+                info_arg=False,
+                return_schema=core_schema.str_schema(),
+            ),
+        )
