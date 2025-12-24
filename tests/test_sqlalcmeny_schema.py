@@ -29,7 +29,11 @@ class BusinessBaseModel(ModelBase):
 class Merchant(BusinessBaseModel):
     __tablename__ = "merchant"
 
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
     terminals: Mapped[list["Terminal"]] = relationship(back_populates="merchant")
+
+    def __repr__(self):
+        return f"<Merchant(id={self.id}, title='{self.title}')>"
 
 
 class Terminal(BusinessBaseModel):
@@ -47,12 +51,11 @@ class Terminal(BusinessBaseModel):
     )
 
     merchant_id: Mapped[int] = mapped_column(ForeignKey("merchant.id"), index=True)
+    merchant: Mapped["Merchant"] = relationship(back_populates="terminals")
 
     is_h2h: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=expression.true())
 
     registered_delay: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
-    merchant: Mapped["Merchant"] = relationship(back_populates="terminals")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -78,6 +81,7 @@ table_schema_data = FieldsSchemaData(
             read_only=False,
             required=True,
             many=False,
+            rel_name='merchant',
         ),
         'is_h2h': FieldSchemaData(
             type='boolean',
@@ -163,8 +167,13 @@ async def test_create(sqlite_sessionmaker):
 
     user = UserABC(username="test")
 
+    async with sqlite_sessionmaker() as session:
+        merchant = Merchant(title='Test merch')
+        session.add(merchant)
+        await session.commit()
+
     create_data = {
-        'merchant_id': 1,
+        'merchant_id': merchant.id,
         'description': 'test',
     }
     create_result: CreateResult = await category.create(
@@ -184,7 +193,7 @@ async def test_create(sqlite_sessionmaker):
         'description': 'test',
         'id': 1,
         'is_h2h': True,
-        'merchant_id': {'key': 1, 'title': '1'},
+        'merchant_id': {'key': 1, 'title': "<Merchant(id=1, title='Test merch')>"},
         'registered_delay': None,
         'secret_key': mock.ANY,
     }
@@ -205,7 +214,6 @@ async def test_create(sqlite_sessionmaker):
 
     update_data = {
         'description': 'new description',
-        'merchant_id': 3,
     }
     update_result = await category.update(
         pk=create_result.pk,

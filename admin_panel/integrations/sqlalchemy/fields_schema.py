@@ -22,8 +22,9 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
         from sqlalchemy.sql import sqltypes
         from sqlalchemy.sql.schema import Column
 
+        mapper = inspect(self.model).mapper
         added_fields = []
-        for attr in inspect(self.model).mapper.column_attrs:
+        for attr in mapper.column_attrs:
             col: Column = attr.columns[0]
             name = attr.key
 
@@ -57,6 +58,16 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             # Foreign key column
             if col.foreign_keys:
                 field_class = SQLAlchemyRelatedField
+
+                # Find relationship that uses this FK column
+                rel_name = None
+                for rel in mapper.relationships:
+                    if col in rel.local_columns:
+                        rel_name = rel.key
+                        break
+
+                if rel_name:
+                    field_data["rel_name"] = rel_name
 
             elif isinstance(col_type, (sqltypes.BigInteger, sqltypes.Integer)) or py_t is int:
                 field_class = schema.IntegerField
@@ -95,3 +106,13 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             self.fields = added_fields
 
         super().post_init(*args, **kwargs)
+
+    async def serialize(self, line_data: dict, extra: dict, *args, **kwargs) -> dict:
+        for field_slug, field in self.get_fields().items():
+            # pylint: disable=protected-access
+            if field._type == 'function_field':
+                continue
+
+            line_data[field_slug] = line_data.get(field_slug)
+
+        return await super().serialize(line_data, extra, *args, **kwargs)

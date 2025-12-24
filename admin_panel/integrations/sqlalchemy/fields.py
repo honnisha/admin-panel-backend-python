@@ -3,6 +3,7 @@ from typing import Any, List
 from pydantic.dataclasses import dataclass
 
 from admin_panel.auth import UserABC
+from admin_panel.schema.category import FieldSchemaData
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.table_models import Record
 from admin_panel.translations import LanguageManager
@@ -11,26 +12,16 @@ from admin_panel.utils import DeserializeAction
 
 @dataclass
 class SQLAlchemyRelatedField(TableField):
+    _type: str = 'related'
     queryset: Any = None  # optional custom query builder
     many: bool = False
-    _type: str = 'related'
+    rel_name: str | None = None
 
-    def generate_schema(self, user: UserABC, field_slug, language_manager: LanguageManager) -> dict:
+    def generate_schema(self, user: UserABC, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
         schema.many = self.many
+        schema.rel_name = self.rel_name
         return schema
-
-    async def serialize(self, value, *args, **kwargs) -> Any:
-        # `value` may be a related ORM instance (via relationship) or a raw FK id.
-        if value is None:
-            return None
-
-        # If relationship-loaded instance
-        if hasattr(value, '__dict__') and hasattr(value, 'id'):
-            return {'key': getattr(value, 'id'), 'title': str(value)}
-
-        # Otherwise assume scalar key
-        return {'key': value, 'title': str(value)}
 
     def _get_target_model(self, model, field_slug):
         # pylint: disable=import-outside-toplevel
@@ -110,6 +101,19 @@ class SQLAlchemyRelatedField(TableField):
             results.append(Record(key=getattr(record, 'id'), title=str(record)))
 
         return results
+
+    async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
+        # `value` may be a related ORM instance (via relationship) or a raw FK id.
+        if value is None:
+            return None
+
+        if self.rel_name:
+            record = getattr(extra['record'], self.rel_name)
+            if record:
+                return {'key': value, 'title': str(record)}
+
+        # Otherwise assume scalar key
+        return {'key': value, 'title': str(value)}
 
     async def deserialize(self, value, action: DeserializeAction, extra: dict, *args, **kwargs) -> Any:
         value = await super().deserialize(value, action, extra, *args, **kwargs)

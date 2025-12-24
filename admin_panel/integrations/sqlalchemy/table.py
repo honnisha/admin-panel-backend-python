@@ -6,7 +6,6 @@ from admin_panel.auth import UserABC
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSchema
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
-from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
 from admin_panel.utils import DeserializeAction
@@ -27,17 +26,56 @@ class SQLAlchemyDeleteAction:
         return ActionResult(message=ActionMessage(_('deleted_successfully')))
 
 
+def record_to_dict(record):
+    # pylint: disable=import-outside-toplevel
+    from sqlalchemy import inspect
+    return {
+        attr.key: getattr(record, attr.key)
+        for attr in inspect(record).mapper.column_attrs
+    }
+
+
 class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable):
     model: Any
     slug = None
     ordering_fields = []
     search_enabled = True
 
+    table_schema: SQLAlchemyFieldsSchema
+
     db_async_session: Any = None
+
+    def get_queryset(self):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+
+        stmt = select(self.model)
+
+        # Eager-load related fields
+        for slug, field in self.table_schema.get_fields().items():
+
+            # pylint: disable=protected-access
+            if field._type == "related" and field.rel_name:
+
+                if not hasattr(self.model, field.rel_name):
+                    msg = f'Model {self.model.__name__} do not contain rel_name:"{field.rel_name}" for field "{slug}" {field}'
+                    raise AttributeError(msg)
+
+                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
+
+        return stmt
 
     def __init__(self, model=None, db_async_session=None, ordering_fields=None):
         if model:
             self.model = model
+
+        if not self.table_schema:
+            self.table_schema = SQLAlchemyFieldsSchema(model=self.model)
+
+        stmt = self.get_queryset()
+        if not self.model and stmt:
+            model = stmt.column_descriptions[0]["entity"]
 
         if not self.model:
             msg = f'{type(self).__name__}.model is required for SQLAlchemy'
@@ -55,9 +93,6 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
 
         if ordering_fields:
             self.ordering_fields = ordering_fields
-
-        if not self.table_schema:
-            self.table_schema = SQLAlchemyFieldsSchema(model=self.model)
 
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
@@ -80,10 +115,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
     ) -> schema.TableListResult:
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import func, select
-        from sqlalchemy.orm import load_only
-        from sqlalchemy.orm import selectinload
-
-        fields = self.table_schema.get_fields()
+        from sqlalchemy.orm import load_only, selectinload
 
         # Count
         try:
@@ -105,17 +137,20 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
 
         # Fetch rows (optionally only required columns)
         col_names = [
-            slug for slug, f in fields.items()
-            if not issubclass(f.__class__, FunctionField)
+            slug for slug, f in self.table_schema.get_fields().items()
+
+            # pylint: disable=protected-access
+            if f._type != 'function_field'
         ]
 
         stmt = select(self.model)
 
         # Eager-load related fields
-        for slug, field in fields.items():
-            if getattr(field, "_type", None) == "related":
+        for slug, field in self.table_schema.get_fields().items():
+            # pylint: disable=protected-access
+            if field._type == "related":
                 if hasattr(self.model, slug):
-                    stmt = stmt.options(selectinload(getattr(self.model, slug)))
+                    stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
 
         if col_names:
             attrs = [getattr(self.model, name) for name in col_names if hasattr(self.model, name)]
@@ -127,14 +162,8 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
 
         data = []
         for record in records:
-            line_data = {}
-            for field_slug, field in fields.items():
-                if issubclass(field.__class__, FunctionField):
-                    continue
-                line_data[field_slug] = getattr(record, field_slug)
-
             line = await self.table_schema.serialize(
-                line_data,
+                record_to_dict(record),
                 extra={"record": record, "user": user},
             )
             data.append(line)
@@ -148,17 +177,18 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
             language_manager: LanguageManager,
     ) -> Optional[dict]:
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy import inspect, select
+        from sqlalchemy import inspect
 
         col = inspect(self.model).mapper.columns[self.pk_name]
         python_type = col.type.python_type
 
         assert self.pk_name
-        stmt = select(self.model).where(getattr(self.model, self.pk_name) == python_type(pk))
+        stmt = self.get_queryset().where(getattr(self.model, self.pk_name) == python_type(pk))
 
         try:
             async with self.db_async_session() as session:
                 record = (await session.execute(stmt)).scalars().first()
+
         except Exception as e:
             logger.exception(
                 'SQLAlchemy %s retrieve db error: %s', type(self).__name__, e,
@@ -174,15 +204,8 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
                 status_code=400,
             )
 
-        line_data: dict[str, Any] = {}
-        for field_slug, field in self.table_schema.get_fields().items():
-            if issubclass(field.__class__, FunctionField):
-                continue
-
-            line_data[field_slug] = getattr(record, field_slug)
-
         return await self.table_schema.serialize(
-            line_data,
+            record_to_dict(record),
             extra={"record": record, "user": user},
         )
 
@@ -237,7 +260,7 @@ class SQLAlchemyAdminUpdate:
             language_manager: LanguageManager,
     ) -> schema.UpdateResult:
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy import inspect, select
+        from sqlalchemy import inspect
 
         if pk is None:
             raise AdminAPIException(
@@ -248,7 +271,7 @@ class SQLAlchemyAdminUpdate:
         col = inspect(self.model).mapper.columns[self.pk_name]
         python_type = col.type.python_type
 
-        stmt = select(self.model).where(getattr(self.model, self.pk_name) == python_type(pk))
+        stmt = self.get_queryset().where(getattr(self.model, self.pk_name) == python_type(pk))
 
         async with self.db_async_session() as session:
             record = (await session.execute(stmt)).scalars().first()

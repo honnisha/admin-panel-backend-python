@@ -42,6 +42,7 @@ class FieldSchemaData(DataclassBase):
 
     # SQLAlchemyRelatedField
     many: bool | None = None
+    rel_name: str | None = None
 
 
 @dataclass

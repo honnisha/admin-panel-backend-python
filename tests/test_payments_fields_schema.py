@@ -2,7 +2,6 @@ import pytest
 
 from admin_panel.auth import UserABC
 from admin_panel.schema.category import CategorySchemaData, FieldSchemaData, FieldsSchemaData, TableInfoSchemaData
-from admin_panel.schema.table.fields_schema import FieldsSchema
 from example.main import CustomLanguageManager
 from example.sections.payments import PaymentFieldsSchema, PaymentsAdmin
 
