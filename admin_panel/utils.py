@@ -1,4 +1,5 @@
 import re
+
 from pydantic import TypeAdapter
 
 

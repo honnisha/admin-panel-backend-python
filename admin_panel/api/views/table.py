@@ -42,11 +42,21 @@ async def table_list(request: Request, group: str, category: str, list_data: Lis
 
 @router.post(path='/{group}/{category}/retrieve/{pk}/')
 async def table_retrieve(request: Request, group: str, category: str, pk: Any) -> dict:
+    schema: AdminSchema = request.app.state.schema
+
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
     if not schema_category.has_retrieve:
         raise HTTPException(status_code=404, detail=f"Category {group}.{category} is not allowed for retrive")
 
-    data: Optional[dict] = await schema_category.retrieve(pk, user)
+    language_slug = request.headers.get('Accept-Language')
+    language_manager: LanguageManager = schema.get_language_manager(language_slug)
+    context = {'language_manager': language_manager}
+
+    try:
+        data: Optional[dict] = await schema_category.retrieve(pk, user, language_manager)
+    except AdminAPIException as e:
+        return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
+
     if data is None:
         raise HTTPException(status_code=404, detail=f"PK \"{pk}\" is not found")
 
@@ -73,7 +83,7 @@ async def table_create(request: Request, group: str, category: str) -> CreateRes
     context = {'language_manager': language_manager}
 
     try:
-        result: CreateResult = await schema_category.create(await request.json(), user)
+        result: CreateResult = await schema_category.create(await request.json(), user, language_manager)
     except AdminAPIException as e:
         return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 
@@ -96,7 +106,7 @@ async def table_update(request: Request, group: str, category: str, pk: Any) -> 
     context = {'language_manager': language_manager}
 
     try:
-        result: UpdateResult = await schema_category.update(pk, await request.json(), user)
+        result: UpdateResult = await schema_category.update(pk, await request.json(), user, language_manager)
     except AdminAPIException as e:
         return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 

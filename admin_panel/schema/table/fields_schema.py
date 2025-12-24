@@ -29,16 +29,21 @@ class FieldsSchema:
     # Generated fields
     _fields_list: List | None = None
 
-    def __init__(self, list_display=None, fields=None, *args, **kwargs):
+    def __init__(self, list_display=None, readonly_fields=None, fields=None, *args, **kwargs):
         if fields:
             self.fields = fields
 
         if list_display:
             self.list_display = list_display
 
-        self.post_init(*args, **kwargs)
+        if readonly_fields:
+            self.readonly_fields = readonly_fields
 
-    def post_init(self, *args, **kwargs):
+        # Fields from kwargs
+        for k, v in kwargs.items():
+            if issubclass(type(v), TableField):
+                setattr(self, k, v)
+
         # Generation FunctionField
         for attribute_name in dir(self):
             if '__' in attribute_name:
@@ -58,8 +63,12 @@ class FieldsSchema:
                     continue
 
                 attribute = getattr(self, attribute_name)
-                if issubclass(attribute.__class__, TableField):
+                if issubclass(type(attribute), TableField):
                     self.fields.append(attribute_name)
+
+        self.post_init(*args, **kwargs)
+
+    def post_init(self, *args, **kwargs):
 
         if not self.fields:
             msg = f'Schema {type(self).__name__}.fields is empty'
@@ -142,6 +151,10 @@ class FieldsSchema:
         for field_slug, field in self.get_fields().items():
 
             if field.read_only:
+                continue
+
+            # Skip update if fields is not presented in data
+            if action == DeserializeAction.UPDATE and field_slug not in data:
                 continue
 
             value = data.get(field_slug)

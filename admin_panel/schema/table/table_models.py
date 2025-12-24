@@ -18,10 +18,10 @@ class ListFilters(BaseModel):
 
 
 class AutocompleteData(BaseModel):
-    search_string: str
     field_slug: str
-    is_filter: bool
-    form_data: dict
+    search_string: str = ''
+    is_filter: bool = False
+    form_data: dict = Field(default_factory=dict)
     existed_choices: List[Any] = Field(default_factory=list)
     action_name: str | None = None
     limit: int = 25
@@ -33,13 +33,13 @@ class Record(BaseModel):
 
 
 class AutocompleteResult(BaseModel):
-    results: List[Record]
+    results: List[Record] = Field(default_factory=list)
 
 
 class ListData(BaseModel):
     page: int = 1
     limit: int = 25
-    filters: ListFilters
+    filters: ListFilters = Field(default_factory=ListFilters)
     search: str | None = None
     ordering: str | None = None
 

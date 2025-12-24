@@ -18,4 +18,4 @@ async def login(request: Request, auth_data: AuthData) -> AuthResult:
     except AdminAPIException as e:
         return JSONResponse(e.get_error().model_dump(mode='json'), status_code=e.status_code)
 
-    return JSONResponse(content=result.dict())
+    return JSONResponse(content=result.model_dump(mode='json'))

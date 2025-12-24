@@ -40,6 +40,9 @@ class FieldSchemaData(DataclassBase):
     # ArrayField
     array_type: str | None = None
 
+    # SQLAlchemyRelatedField
+    many: bool | None = None
+
 
 @dataclass
 class FieldsSchemaData(DataclassBase):
@@ -61,7 +64,7 @@ class TableInfoSchemaData(DataclassBase):
     can_create: bool = Field(default=False)
     can_update: bool = Field(default=False)
 
-    table_filters: FieldsSchemaData | None = Field(default=False)
+    table_filters: FieldsSchemaData | None = Field(default=None)
 
     ordering_fields: List[str] = Field(default_factory=list)
 

@@ -1,111 +1,19 @@
-import datetime
 import logging
 from typing import Any, Optional
 
-from faker import Faker
-
 from admin_panel import auth, schema
 from admin_panel.auth import UserABC
-from admin_panel.integrations.sqlalchemy.fields import SQLAlchemyRelatedField
+from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSchema
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
+from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
-from admin_panel.utils import humanize_field_name
+from admin_panel.utils import DeserializeAction
 
 from .autocomplete import SQLAlchemyAdminAutocompleteMixin
 
 logger = logging.getLogger('admin_panel')
-
-
-class SQLAlchemyFieldsSchema(schema.FieldsSchema):
-    model: Any
-
-    def __init__(self, model=None, *args, **kwargs):
-        if model:
-            self.model = model
-
-        super().__init__(*args, **kwargs)
-
-    def post_init(self, *args, **kwargs):
-        super().post_init(*args, **kwargs)
-
-        # pylint: disable=import-outside-toplevel
-        from sqlalchemy import inspect
-        from sqlalchemy.dialects.postgresql import ARRAY
-        from sqlalchemy.sql import sqltypes
-        from sqlalchemy.sql.schema import Column
-
-        added_fields = []
-        for attr in inspect(self.model).mapper.column_attrs:
-            col: Column = attr.columns[0]
-            name = attr.key
-
-            if self.fields and name not in self.fields:
-                continue
-
-            field_data = {}
-            info = col.info or {}
-            field_data["label"] = info.get('label', humanize_field_name(name))
-            field_data["help_text"] = info.get('help_text')
-
-            field_data["read_only"] = col.primary_key
-
-            # Whether the field is required on input (best-effort heuristic)
-            field_data["required"] = (
-                not col.nullable
-                and col.default is None
-                and col.server_default is None
-                and not col.primary_key
-            )
-
-            if "choices" in info:
-                field_data["choices"] = [(c[0], c[1]) for c in info["choices"]]
-
-            col_type = col.type
-            try:
-                py_t = col_type.python_type
-            except Exception:
-                py_t = None
-
-            # Foreign key column
-            if col.foreign_keys:
-                field_class = SQLAlchemyRelatedField
-
-            elif isinstance(col_type, (sqltypes.BigInteger, sqltypes.Integer)) or py_t is int:
-                field_class = schema.IntegerField
-
-            elif isinstance(col_type, sqltypes.String) or py_t is str:
-                field_class = schema.StringField
-                # Max length is usually stored as String(length=...)
-                if getattr(col_type, "length", None):
-                    field_data["max_length"] = col_type.length
-
-            elif isinstance(col_type, sqltypes.DateTime) or py_t is datetime:
-                field_class = schema.DateTimeField
-
-            elif isinstance(col_type, sqltypes.Boolean) or py_t is bool:
-                field_class = schema.BooleanField
-
-            elif isinstance(col_type, sqltypes.JSON):
-                field_class = schema.JSONField
-
-            elif isinstance(col_type, ARRAY):
-                field_class = schema.ArrayField
-                field_data["array_type"] = type(col_type.item_type).__name__.lower()
-
-            elif isinstance(col_type, sqltypes.NullType):
-                continue
-
-            else:
-                msg = f'SQLAlchemy autogenerate ORM field "{name}" is not supported for type: {col_type}'
-                raise AttributeError(msg)
-
-            schema_field = field_class(**field_data)
-            setattr(self, name, schema_field)
-            added_fields.append(name)
-
-        if not self.fields:
-            self.fields = added_fields
 
 
 class SQLAlchemyDeleteAction:
@@ -123,19 +31,33 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
     model: Any
     slug = None
     ordering_fields = []
+    search_enabled = True
 
-    def __init__(self, model=None, ordering_fields=None):
+    db_async_session: Any = None
+
+    def __init__(self, model=None, db_async_session=None, ordering_fields=None):
         if model:
             self.model = model
+
+        if not self.model:
+            msg = f'{type(self).__name__}.model is required for SQLAlchemy'
+            raise AttributeError(msg)
+
+        if not self.slug:
+            self.slug = self.model.__name__.lower()
+
+        if db_async_session:
+            self.db_async_session = db_async_session
+
+        if not self.db_async_session:
+            msg = f'{type(self).__name__}.db_async_session is required for SQLAlchemy'
+            raise AttributeError(msg)
 
         if ordering_fields:
             self.ordering_fields = ordering_fields
 
         if not self.table_schema:
             self.table_schema = SQLAlchemyFieldsSchema(model=self.model)
-
-        if not self.slug:
-            self.slug = self.model.__name__.lower()
 
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
@@ -149,48 +71,230 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
 
         super().__init__()
 
-    def _get_data(self, pk):
-        fake = Faker()
-        Faker.seed(pk)
-
-        return {
-            'user_id': pk,
-            'amount': 10 * fake.pyint(min_value=0, max_value=100),
-            'endpoint': fake.word(),
-            'description': fake.sentence(nb_words=5),
-            'image': f'https://picsum.photos/id/{5039-pk+1}/200/300',
-            'created_at': datetime.datetime(2025, 6, 16, 9, 45, 29) - datetime.timedelta(hours=pk, minutes=pk),
-        }
-
-    async def retrieve(self, pk: Any, user: auth.UserABC) -> Optional[dict]:
-        line_data = self._get_data(int(pk))
-        line = await self.table_schema.serialize(line_data, extra={'user': user, 'record': line_data})
-        return line
-
     # pylint: disable=too-many-arguments
     async def get_list(
-        self, list_data: schema.ListData, user: auth.UserABC, language_manager: LanguageManager
+        self,
+        list_data: schema.ListData,
+        user: auth.UserABC,
+        language_manager: LanguageManager,
     ) -> schema.TableListResult:
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import func, select
+        from sqlalchemy.orm import load_only
+        from sqlalchemy.orm import selectinload
+
+        fields = self.table_schema.get_fields()
+
+        # Count
+        try:
+            async with self.db_async_session() as session:
+                total_count = await session.scalar(
+                    select(func.count()).select_from(self.model)
+                )
+        except ConnectionRefusedError as e:
+            logger.exception(
+                'SQLAlchemy %s get_list db error: %s', type(self).__name__, e,
+            )
+            msg = _('connection_refused_error') % {'error': str(e)}
+            raise AdminAPIException(
+                APIError(message=msg, code='connection_refused_error'),
+                status_code=500,
+            ) from e
+
+        total_count = int(total_count or 0)
+
+        # Fetch rows (optionally only required columns)
+        col_names = [
+            slug for slug, f in fields.items()
+            if not issubclass(f.__class__, FunctionField)
+        ]
+
+        stmt = select(self.model)
+
+        # Eager-load related fields
+        for slug, field in fields.items():
+            if getattr(field, "_type", None) == "related":
+                if hasattr(self.model, slug):
+                    stmt = stmt.options(selectinload(getattr(self.model, slug)))
+
+        if col_names:
+            attrs = [getattr(self.model, name) for name in col_names if hasattr(self.model, name)]
+            if attrs:
+                stmt = stmt.options(load_only(*attrs))
+
+        async with self.db_async_session() as session:
+            records = (await session.execute(stmt)).scalars().all()
+
         data = []
-        total_count = 5039
+        for record in records:
+            line_data = {}
+            for field_slug, field in fields.items():
+                if issubclass(field.__class__, FunctionField):
+                    continue
+                line_data[field_slug] = getattr(record, field_slug)
 
-        for i in range(0, list_data.limit):
-            pk = total_count - ((list_data.page - 1) * list_data.limit + i)
-            if pk < 0:
-                continue
-
-            line_data = self._get_data(pk)
-            line = await self.table_schema.serialize(line_data, extra={'user': user, 'record': line_data})
+            line = await self.table_schema.serialize(
+                line_data,
+                extra={"record": record, "user": user},
+            )
             data.append(line)
 
         return schema.TableListResult(data=data, total_count=total_count)
 
+    async def retrieve(
+            self,
+            pk: Any,
+            user: auth.UserABC,
+            language_manager: LanguageManager,
+    ) -> Optional[dict]:
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import inspect, select
+
+        col = inspect(self.model).mapper.columns[self.pk_name]
+        python_type = col.type.python_type
+
+        assert self.pk_name
+        stmt = select(self.model).where(getattr(self.model, self.pk_name) == python_type(pk))
+
+        try:
+            async with self.db_async_session() as session:
+                record = (await session.execute(stmt)).scalars().first()
+        except Exception as e:
+            logger.exception(
+                'SQLAlchemy %s retrieve db error: %s', type(self).__name__, e,
+            )
+            raise AdminAPIException(
+                APIError(message=_('db_error_retrieve'), code='db_error_retrieve'), status_code=500,
+            ) from e
+
+        if record is None:
+            msg = _('record_not_found') % {'pk_name': self.pk_name, 'pk': pk}
+            raise AdminAPIException(
+                APIError(message=msg, code='record_not_found'),
+                status_code=400,
+            )
+
+        line_data: dict[str, Any] = {}
+        for field_slug, field in self.table_schema.get_fields().items():
+            if issubclass(field.__class__, FunctionField):
+                continue
+
+            line_data[field_slug] = getattr(record, field_slug)
+
+        return await self.table_schema.serialize(
+            line_data,
+            extra={"record": record, "user": user},
+        )
+
 
 class SQLAlchemyAdminCreate:
-    async def create(self, data: dict, user: UserABC) -> schema.CreateResult:
-        return schema.CreateResult(pk=0)
+    async def create(
+            self,
+            data: dict,
+            user: UserABC,
+            language_manager: LanguageManager,
+    ) -> schema.CreateResult:
+        deserialized_data = await self.table_schema.deserialize(
+            data,
+            action=DeserializeAction.CREATE,
+            extra={'model': self.model, 'user': user},
+        )
+        try:
+            record = self.model(**deserialized_data)
+            async with self.db_async_session() as session:
+                session.add(record)
+                await session.commit()
+                await session.refresh(record)
+
+        except ConnectionRefusedError as e:
+            logger.exception(
+                'SQLAlchemy %s create db error: %s', type(self).__name__, e,
+            )
+            msg = _('connection_refused_error') % {'error': str(e)}
+            raise AdminAPIException(
+                APIError(message=msg, code='connection_refused_error'),
+                status_code=500,
+            ) from e
+
+        except Exception as e:
+            logger.exception(
+                'SQLAlchemy %s create db error: %s', type(self).__name__, e,
+            )
+            raise AdminAPIException(
+                APIError(message=_('db_error_create'), code='db_error_create'), status_code=500,
+            ) from e
+
+        pk_value = getattr(record, self.pk_name, None)
+        return schema.CreateResult(pk=pk_value)
 
 
 class SQLAlchemyAdminUpdate:
-    async def update(self, pk: Any, data: dict, user: auth.UserABC) -> schema.UpdateResult:
-        return schema.UpdateResult(pk=0)
+    async def update(
+            self,
+            pk: Any,
+            data: dict,
+            user: auth.UserABC,
+            language_manager: LanguageManager,
+    ) -> schema.UpdateResult:
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import inspect, select
+
+        if pk is None:
+            raise AdminAPIException(
+                APIError(message=_('pk_not_found') % {'pk_name': self.pk_name}, code='pk_not_found'),
+                status_code=400,
+            )
+
+        col = inspect(self.model).mapper.columns[self.pk_name]
+        python_type = col.type.python_type
+
+        stmt = select(self.model).where(getattr(self.model, self.pk_name) == python_type(pk))
+
+        async with self.db_async_session() as session:
+            record = (await session.execute(stmt)).scalars().first()
+
+        if record is None:
+            return None
+
+        deserialized_data = await self.table_schema.deserialize(
+            data,
+            action=DeserializeAction.UPDATE,
+            extra={"record": record, "model": self.model, "user": user},
+        )
+
+        for k, v in deserialized_data.items():
+            setattr(record, k, v)
+
+        try:
+            async with self.db_async_session() as session:
+                await session.commit()
+
+        except ConnectionRefusedError as e:
+            logger.exception(
+                'SQLAlchemy %s update db error: %s', type(self).__name__, e,
+            )
+            msg = _('connection_refused_error') % {'error': str(e)}
+            raise AdminAPIException(
+                APIError(message=msg, code='connection_refused_error'),
+                status_code=400,
+            ) from e
+
+        except Exception as e:
+            logger.exception(
+                'SQLAlchemy %s update db error: %s', type(self).__name__, e,
+            )
+            raise AdminAPIException(
+                APIError(message=_('db_error_update'), code='db_error_update'), status_code=500,
+            ) from e
+
+        return schema.UpdateResult(pk=pk)
+
+
+# pylint: disable=too-many-ancestors
+class SQLAlchemyAdmin(
+        SQLAlchemyAdminUpdate,
+        SQLAlchemyAdminCreate,
+        SQLAlchemyDeleteAction,
+        SQLAlchemyAdminBase,
+):
+    pass

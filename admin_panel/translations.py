@@ -48,6 +48,42 @@ class TranslateText(DataclassBase):
         return self
 
 
+DEFAULT_PHRASES = {
+    'ru': {
+        'delete': 'Удалить',
+        'delete_confirmation_text': 'Вы уверены, что хотите удалить данные записи?\nДанное действие нельзя отменить.',
+        'deleted_successfully': 'Записи успешно удалены.',
+        'pk_not_found': 'Поле "%(pk_name)s" не найдено среди переданных данных.',
+        'record_not_found': 'Запись по ключу %(pk_name)s=%(pk)s не найдена.',
+        'db_error_create': 'Ошибка создания записи в базе данных.',
+        'db_error_update': 'Ошибка обновления записи в базе данных.',
+        'db_error_retrieve': 'Ошибка получения записи из базы данных.',
+        'connection_refused_error': 'Ошибка подключения к базе данных: %(error)s',
+    },
+    'en': {
+        'delete': 'Delete',
+        'delete_confirmation_text': 'Are you sure you want to delete those records?\nThis action cannot be undone.',
+        'deleted_successfully': 'The entries were successfully deleted.',
+        'pk_not_found': 'The "%(pk_name)s" field was not found in the submitted data.',
+        'record_not_found': 'No record found for %(pk_name)s=%(pk)s.',
+        'db_error_update': 'Error updating the record in the database.',
+        'db_error_create': 'Error creating a record in the database.',
+        'db_error_retrieve': 'Error retrieving the record from the database.',
+        'connection_refused_error': 'Database connection error: %(error)s',
+    }
+}
+
+
+def merge_phrases(base: dict[str, dict[str, str]], extra: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
+    merged = {lang: phrases.copy() for lang, phrases in base.items()}
+
+    for lang, phrases in extra.items():
+        if lang in merged:
+            merged[lang].update(phrases)
+
+    return merged
+
+
 class LanguageManager(abc.ABC):
     language: str | None
 
@@ -57,6 +93,11 @@ class LanguageManager(abc.ABC):
     def __init__(self, language: str | None):
         self.language = language
         _active._language_manager = self
+
+        if not self.languages_phrases:
+            self.languages_phrases = {}
+
+        self.languages_phrases = merge_phrases(self.languages_phrases, DEFAULT_PHRASES)
 
     def get_text(self, text) -> str:
         if self.languages_phrases and isinstance(text, TranslateText):

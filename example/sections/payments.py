@@ -82,7 +82,7 @@ class PaymentsAdmin(schema.CategoryTable):
     search_help = _('payments_search_fields')
 
     table_filters = PaymentFiltersSchema()
-    table_schema = PaymentFieldsSchema()
+    table_schema = PaymentFieldsSchema(readonly_fields=['amount'])
     pk_name = 'id'
     ordering_fields = [
         'id',
@@ -138,7 +138,10 @@ class PaymentsAdmin(schema.CategoryTable):
 
     # pylint: disable=too-many-arguments
     async def get_list(
-        self, list_data: schema.ListData, user: auth.UserABC, language_manager: LanguageManager
+        self,
+        list_data: schema.ListData,
+        user: auth.UserABC,
+        language_manager: LanguageManager,
     ) -> schema.TableListResult:
         await asyncio.sleep(0.2)
 
@@ -156,14 +159,30 @@ class PaymentsAdmin(schema.CategoryTable):
 
         return schema.TableListResult(data=data, total_count=total_count)
 
-    async def retrieve(self, pk: Any, user: auth.UserABC) -> Optional[dict]:
+    async def retrieve(
+            self,
+            pk: Any,
+            user: auth.UserABC,
+            language_manager: LanguageManager,
+    ) -> Optional[dict]:
         line_data = self._get_data(int(pk))
         line = await self.table_schema.serialize(line_data, extra={'user': user, 'record': line_data})
         return line
 
-    async def update(self, pk: Any, data: dict, user: auth.UserABC) -> schema.UpdateResult:
+    async def update(
+            self,
+            pk: Any,
+            data: dict,
+            user: auth.UserABC,
+            language_manager: LanguageManager,
+    ) -> schema.UpdateResult:
         await asyncio.sleep(0.5)
         return schema.UpdateResult(pk=0)
 
-    async def create(self, data: dict, user: auth.UserABC) -> schema.CreateResult:
+    async def create(
+            self,
+            data: dict, user:
+            auth.UserABC,
+            language_manager: LanguageManager,
+    ) -> schema.CreateResult:
         return schema.CreateResult(pk=0)
