@@ -30,7 +30,13 @@ class CategoryTable(Category):
 
     pk_name: str | None = None
 
-    def __init__(self):
+    def __init__(self, *args, table_schema=None, table_filters=None, **kwargs):
+        if table_schema:
+            self.table_schema = table_schema
+
+        if table_filters:
+            self.table_filters = table_filters
+
         if self.slug is None:
             msg = f'Category table attribute {type(self).__name__}.slug must be set'
             raise Exception(msg)

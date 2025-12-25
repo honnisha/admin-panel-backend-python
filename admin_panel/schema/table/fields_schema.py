@@ -29,7 +29,7 @@ class FieldsSchema:
     # Generated fields
     _fields_list: List | None = None
 
-    def __init__(self, list_display=None, readonly_fields=None, fields=None, *args, **kwargs):
+    def __init__(self, *args, list_display=None, readonly_fields=None, fields=None, **kwargs):
         if fields:
             self.fields = fields
 
@@ -98,10 +98,10 @@ class FieldsSchema:
 
         for field_slug in self.list_display:
             if field_slug not in self.fields:
-                msg = f'Field "{field_slug}" inside {type(self).__name__}.list_display, but not presented as field'
+                msg = f'Field "{field_slug}" inside {type(self).__name__}.list_display, but not presented as field; available options: {self.fields}'
                 raise AttributeError(msg)
 
-    def _iter_fields(self):
+    def _generate_fields(self):
         for attribute_name in self.fields:
             if not isinstance(attribute_name, str):
                 msg = f'{type(self).__name__} field "{attribute_name}" must be string'
@@ -110,7 +110,7 @@ class FieldsSchema:
             attribute = getattr(self, attribute_name, None)
 
             if not attribute:
-                msg = f'Field "{attribute_name}" not found or None in {self.__class__}'
+                msg = f'Field slug "{attribute_name}" not found as attribute in {type(self).__name__}'
                 raise AttributeError(msg)
 
             if not issubclass(attribute.__class__, TableField):
@@ -124,7 +124,7 @@ class FieldsSchema:
 
     def get_fields(self) -> Dict[str, TableField]:
         if self._fields_list is None:
-            self._fields_list = {i[0]: i[1] for i in self._iter_fields()}
+            self._fields_list = {i[0]: i[1] for i in self._generate_fields()}
 
         return self._fields_list
 

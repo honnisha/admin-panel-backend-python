@@ -45,28 +45,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
 
     db_async_session: Any = None
 
-    def get_queryset(self):
-        # pylint: disable=import-outside-toplevel
-        from sqlalchemy import select
-        from sqlalchemy.orm import selectinload
-
-        stmt = select(self.model)
-
-        # Eager-load related fields
-        for slug, field in self.table_schema.get_fields().items():
-
-            # pylint: disable=protected-access
-            if field._type == "related" and field.rel_name:
-
-                if not hasattr(self.model, field.rel_name):
-                    msg = f'Model {self.model.__name__} do not contain rel_name:"{field.rel_name}" for field "{slug}" {field}'
-                    raise AttributeError(msg)
-
-                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
-
-        return stmt
-
-    def __init__(self, model=None, db_async_session=None, ordering_fields=None):
+    def __init__(self, *args, model=None, db_async_session=None, ordering_fields=None, **kwargs):
         if model:
             self.model = model
 
@@ -104,7 +83,28 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
                 self.pk_name = attr.key
                 break
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
+
+    def get_queryset(self):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+
+        stmt = select(self.model).options(selectinload('*'))
+
+        # Eager-load related fields
+        for slug, field in self.table_schema.get_fields().items():
+
+            # pylint: disable=protected-access
+            if field._type == "related" and field.rel_name:
+
+                if not hasattr(self.model, field.rel_name):
+                    msg = f'Model {self.model.__name__} do not contain rel_name:"{field.rel_name}" for field "{slug}" {field}'
+                    raise AttributeError(msg)
+
+                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
+
+        return stmt
 
     # pylint: disable=too-many-arguments
     async def get_list(
@@ -135,15 +135,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
 
         total_count = int(total_count or 0)
 
-        # Fetch rows (optionally only required columns)
-        col_names = [
-            slug for slug, f in self.table_schema.get_fields().items()
-
-            # pylint: disable=protected-access
-            if f._type != 'function_field'
-        ]
-
-        stmt = select(self.model)
+        stmt = self.get_queryset()
 
         # Eager-load related fields
         for slug, field in self.table_schema.get_fields().items():
@@ -152,21 +144,15 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
                 if hasattr(self.model, slug):
                     stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
 
-        if col_names:
-            attrs = [getattr(self.model, name) for name in col_names if hasattr(self.model, name)]
-            if attrs:
-                stmt = stmt.options(load_only(*attrs))
-
+        data = []
         async with self.db_async_session() as session:
             records = (await session.execute(stmt)).scalars().all()
-
-        data = []
-        for record in records:
-            line = await self.table_schema.serialize(
-                record_to_dict(record),
-                extra={"record": record, "user": user},
-            )
-            data.append(line)
+            for record in records:
+                line = await self.table_schema.serialize(
+                    record_to_dict(record),
+                    extra={"record": record, "user": user},
+                )
+                data.append(line)
 
         return schema.TableListResult(data=data, total_count=total_count)
 
@@ -188,6 +174,10 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
         try:
             async with self.db_async_session() as session:
                 record = (await session.execute(stmt)).scalars().first()
+                return await self.table_schema.serialize(
+                    record_to_dict(record),
+                    extra={"record": record, "user": user},
+                )
 
         except Exception as e:
             logger.exception(
@@ -204,11 +194,6 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
                 status_code=400,
             )
 
-        return await self.table_schema.serialize(
-            record_to_dict(record),
-            extra={"record": record, "user": user},
-        )
-
 
 class SQLAlchemyAdminCreate:
     async def create(
@@ -217,6 +202,9 @@ class SQLAlchemyAdminCreate:
             user: UserABC,
             language_manager: LanguageManager,
     ) -> schema.CreateResult:
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy.exc import IntegrityError
+
         deserialized_data = await self.table_schema.deserialize(
             data,
             action=DeserializeAction.CREATE,
@@ -237,6 +225,16 @@ class SQLAlchemyAdminCreate:
             raise AdminAPIException(
                 APIError(message=msg, code='connection_refused_error'),
                 status_code=500,
+            ) from e
+
+        except IntegrityError as e:
+            logger.warning(
+                'SQLAlchemy %s create db error: %s', type(self).__name__, e,
+            )
+            orig = e.orig
+            message = orig.args[0] if orig.args else type(orig).__name__
+            raise AdminAPIException(
+                APIError(message=message, code='db_integrity_error'), status_code=500,
             ) from e
 
         except Exception as e:

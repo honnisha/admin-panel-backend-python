@@ -1,87 +1,49 @@
-import uuid
-from datetime import datetime
 from unittest import mock
 
 import pytest
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import expression
 
 from admin_panel.auth import UserABC
 from admin_panel.integrations.sqlalchemy.table import SQLAlchemyAdmin, SQLAlchemyFieldsSchema
 from admin_panel.schema.category import CategorySchemaData, FieldSchemaData, FieldsSchemaData, TableInfoSchemaData
 from admin_panel.schema.table.table_models import (
     AutocompleteData, AutocompleteResult, CreateResult, ListData, TableListResult, UpdateResult)
-from admin_panel.translations import TranslateText as _
 from example.main import CustomLanguageManager
-from tests.conftest import ModelBase
-
-
-class BusinessBaseModel(ModelBase):
-    __abstract__ = True
-    id: Mapped[int] = mapped_column(
-        BigInteger().with_variant(Integer(), "sqlite"),
-        primary_key=True,
-        autoincrement=True,
-    )
-
-
-class Merchant(BusinessBaseModel):
-    __tablename__ = "merchant"
-
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    terminals: Mapped[list["Terminal"]] = relationship(back_populates="merchant")
-
-    def __repr__(self):
-        return f"<Merchant(id={self.id}, title='{self.title}')>"
-
-
-class Terminal(BusinessBaseModel):
-    __tablename__ = "terminal"
-
-    description: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        info={"label": _("description")},
-    )
-    secret_key: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        default=lambda: str(uuid.uuid4()),
-    )
-
-    merchant_id: Mapped[int] = mapped_column(ForeignKey("merchant.id"), index=True)
-    merchant: Mapped["Merchant"] = relationship(back_populates="terminals")
-
-    is_h2h: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=expression.true())
-
-    registered_delay: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )  # DateTime used once
-
-    # whitelist_ips: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-
+from example.sections.models import CurrencyFactory, Merchant, MerchantFactory, Terminal
 
 table_schema_data = FieldsSchemaData(
     list_display=[
+        'id',
+        'title',
         'description',
         'secret_key',
+        'currency_id',
         'merchant_id',
         'is_h2h',
         'registered_delay',
         'created_at',
-        'id',
     ],
     fields={
+        'title': FieldSchemaData(
+            type='string',
+            label='Title',
+            max_length=255,
+            required=True,
+        ),
         'merchant_id': FieldSchemaData(
             type='related',
-            label='Merchant ID',
+            label='Merchant',
             read_only=False,
             required=True,
             many=False,
             rel_name='merchant',
+        ),
+        'currency_id': FieldSchemaData(
+            type='related',
+            label='Currency',
+            read_only=False,
+            required=True,
+            many=False,
+            rel_name='currency',
         ),
         'is_h2h': FieldSchemaData(
             type='boolean',
@@ -143,10 +105,12 @@ category_schema_data = CategorySchemaData(
     ),
 )
 
+FIELDS = ['id', 'title', 'description', 'secret_key', 'currency_id', 'merchant_id', 'is_h2h', 'registered_delay', 'created_at']
+
 
 @pytest.mark.asyncio
 async def test_sqlalchemy_table_schema():
-    fields_schema = SQLAlchemyFieldsSchema(model=Terminal)
+    fields_schema = SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS)
     language_manager = CustomLanguageManager('ru')
     new_schema = fields_schema.generate_schema(UserABC(username="test"), language_manager)
     assert new_schema == table_schema_data
@@ -154,7 +118,11 @@ async def test_sqlalchemy_table_schema():
 
 @pytest.mark.asyncio
 async def test_generate_category_schema(sqlite_sessionmaker):
-    category = SQLAlchemyAdmin(model=Terminal, db_async_session=sqlite_sessionmaker)
+    category = SQLAlchemyAdmin(
+        model=Terminal,
+        db_async_session=sqlite_sessionmaker,
+        table_schema=SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS),
+    )
     language_manager = CustomLanguageManager('ru')
     new_schema = category.generate_schema(UserABC(username="test"), language_manager)
     assert new_schema == category_schema_data
@@ -162,19 +130,25 @@ async def test_generate_category_schema(sqlite_sessionmaker):
 
 @pytest.mark.asyncio
 async def test_create(sqlite_sessionmaker):
-    category = SQLAlchemyAdmin(model=Terminal, db_async_session=sqlite_sessionmaker)
+    category = SQLAlchemyAdmin(
+        model=Terminal,
+        db_async_session=sqlite_sessionmaker,
+        table_schema=SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS)
+    )
     language_manager = CustomLanguageManager('ru')
 
     user = UserABC(username="test")
 
-    async with sqlite_sessionmaker() as session:
-        merchant = Merchant(title='Test merch')
-        session.add(merchant)
-        await session.commit()
+    merchant = await MerchantFactory(
+        title='Test merch',
+    )
+    currency = await CurrencyFactory()
 
     create_data = {
         'merchant_id': merchant.id,
+        'currency_id': currency.id,
         'description': 'test',
+        'title': 'test',
     }
     create_result: CreateResult = await category.create(
         data=create_data,
@@ -191,6 +165,11 @@ async def test_create(sqlite_sessionmaker):
     expected_data = {
         'created_at': mock.ANY,
         'description': 'test',
+        'currency_id': {
+            'key': 1,
+            'title': "<Currency(id=1, num_code='100', char_code='C000')>",
+        },
+        'title': 'test',
         'id': 1,
         'is_h2h': True,
         'merchant_id': {'key': 1, 'title': "<Merchant(id=1, title='Test merch')>"},
@@ -212,7 +191,9 @@ async def test_create(sqlite_sessionmaker):
     )
     assert list_result == expected_create
 
+    new_merchant = await MerchantFactory()
     update_data = {
+        'merchant_id': new_merchant.id,
         'description': 'new description',
     }
     update_result = await category.update(

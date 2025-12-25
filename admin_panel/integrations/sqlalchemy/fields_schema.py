@@ -67,6 +67,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
                         break
 
                 if rel_name:
+                    field_data["label"] = info.get('label', humanize_field_name(rel_name))
                     field_data["rel_name"] = rel_name
 
             elif isinstance(col_type, (sqltypes.BigInteger, sqltypes.Integer)) or py_t is int:

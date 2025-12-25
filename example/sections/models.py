@@ -1,0 +1,143 @@
+import uuid
+from datetime import datetime
+
+import factory
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, func, text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.sql import expression
+
+from admin_panel.translations import TranslateText as _
+from example.sqlite import async_sessionmaker_
+from example.utils import SQLAlchemyFactoryBase
+
+
+class ModelBase(DeclarativeBase):
+    pass
+
+
+class BaseIDModel(ModelBase):
+    __abstract__ = True
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer(), "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
+
+
+class Currency(BaseIDModel):
+    __tablename__ = "currency"
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    num_code: Mapped[int] = mapped_column(SmallInteger, unique=True, index=True, nullable=False)
+    char_code: Mapped[str] = mapped_column(String(10), unique=True, index=True, nullable=False)
+
+    depth: Mapped[int] = mapped_column(SmallInteger, index=True, nullable=False, default=2)
+
+    terminals: Mapped[list["Terminal"]] = relationship(back_populates="currency")  # noqa F821
+
+    def __repr__(self):
+        return f"<Currency(id={self.id}, num_code='{self.num_code}', char_code='{self.char_code}')>"
+
+
+class CurrencyFactory(SQLAlchemyFactoryBase):
+    class Meta:
+        model = Currency
+        sqlalchemy_session_factory = async_sessionmaker_
+        sqlalchemy_session_persistence = "commit"
+
+    title = factory.Faker("currency_name")
+    num_code = factory.Sequence(lambda n: 100 + n)
+    char_code = factory.Sequence(lambda n: f"C{n:03d}")
+    depth = factory.Faker("random_element", elements=[2, 3])
+
+
+class Merchant(BaseIDModel):
+    __tablename__ = "merchant"
+
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)  # pylint: disable=not-callable
+    terminals: Mapped[list["Terminal"]] = relationship(back_populates="merchant")
+
+    def __repr__(self):
+        return f"<Merchant(id={self.id}, title='{self.title}')>"
+
+
+class MerchantFactory(SQLAlchemyFactoryBase):
+    class Meta:
+        model = Merchant
+        sqlalchemy_session_factory = async_sessionmaker_
+        sqlalchemy_session_persistence = "commit"
+
+    user_id = factory.Faker("random_int", min=1, max=10_000)
+    title = factory.Faker("company")
+    created_at = factory.LazyFunction(datetime.utcnow)
+
+
+class Terminal(BaseIDModel):
+    __tablename__ = "terminal"
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        info={"label": _("description")},
+    )
+    secret_key: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default=lambda: str(uuid.uuid4()),
+    )
+
+    merchant_id: Mapped[int] = mapped_column(ForeignKey("merchant.id"), index=True)
+    merchant: Mapped["Merchant"] = relationship(back_populates="terminals")
+
+    currency_id: Mapped[int] = mapped_column(ForeignKey("currency.id"), index=True)
+    currency: Mapped["Currency"] = relationship(back_populates="terminals")  # noqa F821
+
+    is_h2h: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=expression.true())
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=expression.true())
+
+    public_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+    )
+    imitation_api: Mapped[str] = mapped_column(String(50), nullable=True)
+    test_mode: Mapped[bool] = mapped_column(nullable=False, default=False)
+
+    registered_delay: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )  # DateTime used once
+
+    # whitelist_ips: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+
+
+class TerminalFactory(SQLAlchemyFactoryBase):
+    class Meta:
+        model = Terminal
+        sqlalchemy_session_factory = async_sessionmaker_
+        sqlalchemy_session_persistence = "commit"
+
+    title = factory.Faker("company")
+    description = factory.Faker("sentence", nb_words=6)
+
+    secret_key = factory.LazyFunction(lambda: str(uuid.uuid4()))
+    public_id = factory.LazyFunction(lambda: str(uuid.uuid4()))
+
+    merchant = factory.SubFactory(MerchantFactory)
+    currency = factory.SubFactory(CurrencyFactory)
+
+    is_h2h = factory.Faker("boolean")
+    is_active = factory.Faker("boolean")
+
+    imitation_api = factory.Faker("random_element", elements=[None, "sandbox", "mock"])
+    test_mode = factory.Faker("boolean")
+
+    registered_delay = factory.Faker(
+        "random_element",
+        elements=[None, 5, 10, 30, 60],
+    )

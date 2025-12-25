@@ -68,6 +68,9 @@ LANGUAGES_PHRASES = {
         'is_throw_error': 'Выбросить ошибку?',
         'throw_error': 'Пример ошибки валидации поля.',
         'exception_example': 'Пример ошибки исключения.',
+        'merchants': 'Мерчанты',
+        'terminals': 'Терминалы',
+        'currencies': 'Валюты',
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
@@ -92,5 +95,8 @@ LANGUAGES_PHRASES = {
         'is_throw_error': 'Is throw error?',
         'throw_error': 'Example of a field validation error.',
         'exception_example': 'Exception example.',
+        'merchants': 'Merchants',
+        'terminals': 'Terminals',
+        'currencies': 'Currencies',
     },
 }

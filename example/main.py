@@ -10,8 +10,12 @@ from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
 from example.phrases import LANGUAGES_PHRASES
+from example.sections.currency import CurrencyAdmin
 from example.sections.graphs import GraphsExample
+from example.sections.merchant import MerchantAdmin
 from example.sections.payments import PaymentsAdmin
+from example.sections.terminal import TerminalAdmin
+from example.sqlite import async_sessionmaker_, lifespan
 
 
 class LogConfig(BaseModel):
@@ -91,6 +95,23 @@ admin_schema = schema.AdminSchema(
             ]
         ),
         schema.Group(
+            slug='merchants',
+            title=_('merchants'),
+            icon='mdi-folder-account-outline',
+            categories=[
+                MerchantAdmin(db_async_session=async_sessionmaker_),
+                TerminalAdmin(db_async_session=async_sessionmaker_),
+            ]
+        ),
+        schema.Group(
+            slug='currencies',
+            title=_('currencies'),
+            icon='mdi-cash-multiple',
+            categories=[
+                CurrencyAdmin(db_async_session=async_sessionmaker_),
+            ]
+        ),
+        schema.Group(
             slug='statistics',
             title=_('statistics'),
             icon='mdi-finance',
@@ -101,7 +122,8 @@ admin_schema = schema.AdminSchema(
     ],
 )
 
-app = FastAPI(debug=True)
+
+app = FastAPI(debug=True, lifespan=lifespan)
 
 admin_app = admin_schema.generate_app(
     include_scalar=True, include_docs=True, include_redoc=True, debug=True,
