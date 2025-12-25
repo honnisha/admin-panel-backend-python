@@ -89,6 +89,9 @@ class Terminal(BaseIDModel):
         default=lambda: str(uuid.uuid4()),
     )
 
+    return_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    callback_url: Mapped[str] = mapped_column(String(500), nullable=True)
+
     merchant_id: Mapped[int] = mapped_column(ForeignKey("merchant.id"), index=True)
     merchant: Mapped["Merchant"] = relationship(back_populates="terminals")
 
