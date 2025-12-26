@@ -10,6 +10,47 @@ logger = logging.getLogger('admin_panel')
 
 
 class SQLAlchemyAdminListMixin:
+
+    def apply_filters(self, stmt, list_data):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import or_, String
+        from sqlalchemy.orm import InstrumentedAttribute
+
+        # whitelist из schema
+        allowed_fields = set(self.table_schema.get_fields().keys())
+
+        # filters
+        for name, value in list_data.filters.filters.items():
+            if value is None or name not in allowed_fields:
+                continue
+
+            column = getattr(self.model, name, None)
+            if not isinstance(column, InstrumentedAttribute):
+                continue
+
+            if isinstance(value, list):
+                stmt = stmt.where(column.in_(value))
+            else:
+                stmt = stmt.where(column == value)
+
+        # search (только по строковым и только разрешённым)
+        if list_data.search:
+            search = f"%{list_data.search}%"
+            conditions = []
+
+            for name in allowed_fields:
+                column = getattr(self.model, name, None)
+                if (
+                    isinstance(column, InstrumentedAttribute)
+                    and isinstance(column.property.columns[0].type, String)
+                ):
+                    conditions.append(column.ilike(search))
+
+            if conditions:
+                stmt = stmt.where(or_(*conditions))
+
+        return stmt
+
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
     async def get_list(
@@ -41,6 +82,7 @@ class SQLAlchemyAdminListMixin:
         total_count = int(total_count or 0)
 
         stmt = self.get_queryset()
+        stmt = self.apply_filters(stmt, list_data)
 
         # Eager-load related fields
         for _slug, field in self.table_schema.get_fields().items():
