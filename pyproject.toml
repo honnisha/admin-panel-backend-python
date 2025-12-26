@@ -1,6 +1,6 @@
 [project]
 name = "admin-panel"
-version = "0.20.0"
+version = "0.22.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,9 +14,8 @@ dependencies = [
 requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ['admin_panel']
-include-package-data = true
+[tool.setuptools.packages.find]
+include = ["admin_panel*"]
 
 [tool.setuptools.package-data]
 admin_panel = ["static/**/*", "templates/**/*"]
@@ -25,6 +24,7 @@ admin_panel = ["static/**/*", "templates/**/*"]
 example = [
     "uvicorn>=0.34.0",
     "faker>=38.2.0",
+    "pyjwt>=2.10.1",
 ]
 tests = [
     "pytest>=8.4.2",
@@ -34,6 +34,7 @@ tests = [
     "sqlalchemy>=2.0.41",
     "aiosqlite>=0.22.1",
     "factory-boy>=3.3.3",
+    "pyjwt>=2.10.1",
 ]
 scalar = [
     "scalar-fastapi>=1.5.0",

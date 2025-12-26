@@ -44,6 +44,11 @@ class FieldSchemaData(DataclassBase):
     many: bool | None = None
     rel_name: str | None = None
 
+    # IntegerField
+    inputmode: str | None = None
+    precision: int | None = None
+    scale: int | None = None
+
 
 @dataclass
 class FieldsSchemaData(DataclassBase):

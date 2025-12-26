@@ -2,7 +2,6 @@ import abc
 
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
-
 from admin_panel.utils import DataclassBase
 
 

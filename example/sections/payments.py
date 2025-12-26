@@ -164,10 +164,10 @@ class PaymentsAdmin(schema.CategoryTable):
             pk: Any,
             user: auth.UserABC,
             language_manager: LanguageManager,
-    ) -> Optional[dict]:
+    ) -> schema.RetrieveResult:
         line_data = self._get_data(int(pk))
         line = await self.table_schema.serialize(line_data, extra={'user': user, 'record': line_data})
-        return line
+        return schema.RetrieveResult(data=line)
 
     async def update(
             self,

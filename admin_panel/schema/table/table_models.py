@@ -44,6 +44,10 @@ class ListData(BaseModel):
     ordering: str | None = None
 
 
+class RetrieveResult(BaseModel):
+    data: dict
+
+
 class CreateResult(BaseModel):
     pk: Any
 

@@ -49,7 +49,9 @@ class Group(abc.ABC):
                 raise AttributeError(msg)
 
             if category.slug in result.categories:
-                raise KeyError(f'Group slug:"{self.slug}" already have category slug:"{category.slug}"')
+                exists = result.categories[category.slug]
+                msg = f'Category {type(category).__name__}.slug "{self.slug}" already registered by "{exists.title}"'
+                raise KeyError(msg)
 
             result.categories[category.slug] = category.generate_schema(user, language_manager)
 

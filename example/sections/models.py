@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 import factory
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, func, text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import expression
 
@@ -22,6 +22,37 @@ class BaseIDModel(ModelBase):
         primary_key=True,
         autoincrement=True,
     )
+
+
+class User(BaseIDModel):
+    __tablename__ = "user"
+
+    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    password: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    is_staff: Mapped[bool] = mapped_column(default=False, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(default=False, nullable=False)
+    is_active: Mapped[bool] = mapped_column(nullable=False, server_default=expression.true())
+
+    last_login: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)  # pylint: disable=not-callable
+
+    # group_associations = relationship("UserGroup", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}', email='{self.email}')>"
+
+
+class UserFactory(SQLAlchemyFactoryBase):
+    class Meta:
+        model = User
+        sqlalchemy_session_factory = async_sessionmaker_
+        sqlalchemy_session_persistence = "commit"
+
+    username = factory.Faker("word")
+    email = factory.Faker("email")
 
 
 class Currency(BaseIDModel):

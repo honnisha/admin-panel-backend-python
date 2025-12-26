@@ -163,7 +163,7 @@ class CategoryTable(Category):
     async def get_list(self, list_data: ListData, user: UserABC, language_manager: LanguageManager) -> TableListResult:
         raise NotImplementedError()
 
-#     async def retrieve(self, pk: Any, user: UserABC) -> Optional[dict]:
+#     async def retrieve(self, pk: Any, user: UserABC) -> RetrieveResult:
 #        raise NotImplementedError()
 
 #    async def create(self, data: dict, user: UserABC) -> CreateResult:

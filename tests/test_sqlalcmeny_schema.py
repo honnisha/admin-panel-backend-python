@@ -6,9 +6,9 @@ from admin_panel.auth import UserABC
 from admin_panel.integrations.sqlalchemy.table import SQLAlchemyAdmin, SQLAlchemyFieldsSchema
 from admin_panel.schema.category import CategorySchemaData, FieldSchemaData, FieldsSchemaData, TableInfoSchemaData
 from admin_panel.schema.table.table_models import (
-    AutocompleteData, AutocompleteResult, CreateResult, ListData, TableListResult, UpdateResult)
+    AutocompleteData, AutocompleteResult, CreateResult, ListData, RetrieveResult, TableListResult, UpdateResult)
 from example.main import CustomLanguageManager
-from example.sections.models import CurrencyFactory, Merchant, MerchantFactory, Terminal
+from example.sections.models import CurrencyFactory, MerchantFactory, Terminal
 
 table_schema_data = FieldsSchemaData(
     list_display=[
@@ -157,12 +157,12 @@ async def test_create(sqlite_sessionmaker):
     )
     assert create_result.pk == 1
 
-    retrieve_result: dict = await category.retrieve(
+    retrieve_result = await category.retrieve(
         pk=create_result.pk,
         user=user,
         language_manager=language_manager,
     )
-    expected_data = {
+    expected_data = RetrieveResult(data={
         'created_at': mock.ANY,
         'description': 'test',
         'currency_id': {
@@ -175,7 +175,7 @@ async def test_create(sqlite_sessionmaker):
         'merchant_id': {'key': 1, 'title': "<Merchant(id=1, title='Test merch')>"},
         'registered_delay': None,
         'secret_key': mock.ANY,
-    }
+    })
     assert retrieve_result == expected_data
 
     list_result: dict = await category.get_list(
@@ -185,7 +185,7 @@ async def test_create(sqlite_sessionmaker):
     )
     expected_create = TableListResult(
         data=[
-            expected_data
+            expected_data.data,
         ],
         total_count=1,
     )

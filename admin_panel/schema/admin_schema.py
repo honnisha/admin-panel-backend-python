@@ -19,7 +19,11 @@ from admin_panel.utils import DataclassBase
 @dataclass
 class AdminSchemaData(DataclassBase):
     groups: Dict[str, GroupSchemaData]
-    profile: UserABC
+    profile: UserABC | Any
+
+    def __post_init__(self):
+        if not isinstance(self.profile, UserABC):
+            self.profile = UserABC(username=self.profile.username)
 
 
 # pylint: disable=too-many-instance-attributes

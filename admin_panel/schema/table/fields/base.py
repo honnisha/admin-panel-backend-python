@@ -54,6 +54,10 @@ class IntegerField(TableField):
     max_value: int | None = None
     min_value: int | None = None
 
+    inputmode: str | None = None
+    precision: int | None = None
+    scale: int | None = None
+
     def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
@@ -64,6 +68,10 @@ class IntegerField(TableField):
 
         if self.min_value is not None:
             schema.min_value = self.min_value
+
+        schema.inputmode = self.inputmode
+        schema.precision = self.precision
+        schema.scale = self.scale
 
         return schema
 

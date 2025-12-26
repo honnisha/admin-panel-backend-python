@@ -6,7 +6,7 @@ from admin_panel.schema.table import fields as schema_fields
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
 from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.schema.table.fields_schema import FieldsSchema
-from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
+from admin_panel.schema.table.table_models import CreateResult, ListData, RetrieveResult, TableListResult, UpdateResult
 from admin_panel.translations import LanguageManager
 from admin_panel.utils import DeserializeAction
 
@@ -139,7 +139,7 @@ class DjangoAdminBase(DjangoAdminAutocomplete, CategoryTable):
             total_count=total_count,
         )
 
-    async def retrieve(self, pk, user: UserABC) -> dict | None:
+    async def retrieve(self, pk, user: UserABC) -> RetrieveResult:
         from asgiref.sync import sync_to_async  # pylint: disable=import-outside-toplevel
 
         assert self.pk_name
@@ -155,7 +155,8 @@ class DjangoAdminBase(DjangoAdminAutocomplete, CategoryTable):
 
             line_data[field_slug] = await sync_to_async(getattr)(record, field_slug)
 
-        return await self.table_schema.serialize(line_data, extra={'record': record, 'user': user})
+        data = await self.table_schema.serialize(line_data, extra={'record': record, 'user': user})
+        return RetrieveResult(data=data)
 
 
 class DjangoAdminCreate:

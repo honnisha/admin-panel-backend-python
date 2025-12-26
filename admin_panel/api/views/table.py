@@ -9,7 +9,7 @@ from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.schema import AdminSchema
 from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.category_table import CategoryTable
-from admin_panel.schema.table.table_models import CreateResult, ListData, TableListResult, UpdateResult
+from admin_panel.schema.table.table_models import CreateResult, ListData, RetrieveResult, TableListResult, UpdateResult
 from admin_panel.translations import LanguageManager
 
 router = APIRouter(prefix="/table", tags=["Category - Table"])
@@ -41,7 +41,7 @@ async def table_list(request: Request, group: str, category: str, list_data: Lis
 
 
 @router.post(path='/{group}/{category}/retrieve/{pk}/')
-async def table_retrieve(request: Request, group: str, category: str, pk: Any) -> dict:
+async def table_retrieve(request: Request, group: str, category: str, pk: Any) -> RetrieveResult:
     schema: AdminSchema = request.app.state.schema
 
     schema_category, user = await get_category(request, group, category, check_type=CategoryTable)
@@ -53,18 +53,11 @@ async def table_retrieve(request: Request, group: str, category: str, pk: Any) -
     context = {'language_manager': language_manager}
 
     try:
-        data: Optional[dict] = await schema_category.retrieve(pk, user, language_manager)
+        result: RetrieveResult = await schema_category.retrieve(pk, user, language_manager)
     except AdminAPIException as e:
         return JSONResponse(e.get_error().model_dump(mode='json', context=context), status_code=e.status_code)
 
-    if data is None:
-        raise HTTPException(status_code=404, detail=f"PK \"{pk}\" is not found")
-
-    try:
-        return JSONResponse(content=data)
-    except Exception as e:
-        logger.exception('Admin retrieve error: %s; result: %s', e, data)
-        raise HTTPException(status_code=500, detail=f"Content error: {e}") from e
+    return JSONResponse(content=result.model_dump(mode='json', context=context))
 
 
 @router.post(

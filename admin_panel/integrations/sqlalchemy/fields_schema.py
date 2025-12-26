@@ -73,6 +73,12 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             elif isinstance(col_type, (sqltypes.BigInteger, sqltypes.Integer)) or py_t is int:
                 field_class = schema.IntegerField
 
+            elif isinstance(col_type, sqltypes.Numeric):
+                field_class = schema.IntegerField
+                field_data["inputmode"] = "decimal"
+                field_data["precision"] = col_type.precision
+                field_data["scale"] = col_type.scale
+
             elif isinstance(col_type, sqltypes.String) or py_t is str:
                 field_class = schema.StringField
                 # Max length is usually stored as String(length=...)
@@ -96,12 +102,16 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
                 continue
 
             else:
-                msg = f'SQLAlchemy autogenerate ORM field "{name}" is not supported for type: {col_type}'
+                msg = f'SQLAlchemy autogenerate ORM field {self.model.__name__}.{name} is not supported for type: {col_type}'
                 raise AttributeError(msg)
 
             schema_field = field_class(**field_data)
             setattr(self, name, schema_field)
-            added_fields.append(name)
+
+            if col.primary_key:
+                added_fields.insert(0, name)
+            else:
+                added_fields.append(name)
 
         if not self.fields:
             self.fields = added_fields

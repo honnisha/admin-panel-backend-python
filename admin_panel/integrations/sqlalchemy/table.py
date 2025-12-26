@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from admin_panel import auth, schema
 from admin_panel.auth import UserABC
@@ -52,6 +52,10 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
         if not self.table_schema:
             self.table_schema = SQLAlchemyFieldsSchema(model=self.model)
 
+        if not issubclass(type(self.table_schema), SQLAlchemyFieldsSchema):
+            msg = f'{type(self).__name__}.table_schema {self.table_schema} must be subclass of SQLAlchemyFieldsSchema'
+            raise AttributeError(msg)
+
         stmt = self.get_queryset()
         if not self.model and stmt:
             model = stmt.column_descriptions[0]["entity"]
@@ -102,7 +106,8 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
                     msg = f'Model {self.model.__name__} do not contain rel_name:"{field.rel_name}" for field "{slug}" {field}'
                     raise AttributeError(msg)
 
-                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
+                if field.rel_name:
+                    stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
 
         return stmt
 
@@ -138,11 +143,10 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
         stmt = self.get_queryset()
 
         # Eager-load related fields
-        for slug, field in self.table_schema.get_fields().items():
+        for _slug, field in self.table_schema.get_fields().items():
             # pylint: disable=protected-access
-            if field._type == "related":
-                if hasattr(self.model, slug):
-                    stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
+            if field._type == "related" and field.rel_name:
+                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
 
         data = []
         async with self.db_async_session() as session:
@@ -161,7 +165,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
             pk: Any,
             user: auth.UserABC,
             language_manager: LanguageManager,
-    ) -> Optional[dict]:
+    ) -> schema.RetrieveResult:
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
 
@@ -174,10 +178,11 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, schema.CategoryTable
         try:
             async with self.db_async_session() as session:
                 record = (await session.execute(stmt)).scalars().first()
-                return await self.table_schema.serialize(
+                data = await self.table_schema.serialize(
                     record_to_dict(record),
                     extra={"record": record, "user": user},
                 )
+                return schema.RetrieveResult(data=data)
 
         except Exception as e:
             logger.exception(
