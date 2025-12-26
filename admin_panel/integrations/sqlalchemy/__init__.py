@@ -3,5 +3,4 @@
 from .auth import SQLAlchemyJWTAdminAuthentication
 from .autocomplete import SQLAlchemyAdminAutocompleteMixin
 from .fields_schema import SQLAlchemyFieldsSchema
-from .table import (
-    SQLAlchemyAdmin, SQLAlchemyAdminBase, SQLAlchemyAdminCreate, SQLAlchemyAdminUpdate, SQLAlchemyDeleteAction)
+from .table import *

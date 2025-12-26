@@ -63,6 +63,27 @@ async def test_authenticate(sqlite_sessionmaker):
 
 
 @pytest.mark.asyncio
+async def test_authenticate_bad_secret(sqlite_sessionmaker):
+    auth = sqlalchemy.SQLAlchemyJWTAdminAuthentication(
+        secret='123',
+        db_async_session=sqlite_sessionmaker,
+        user_model=User,
+    )
+    user = await UserFactory(username='123', password='test', is_admin=True)
+
+    token = auth.get_token(user)
+    result_user = await auth.authenticate(headers={'Authorization': f'Token {token}'})
+    AdminSchemaData(groups={}, profile=result_user)
+    assert result_user.username == user.username
+
+    auth.secret = 'another'
+    with pytest.raises(AdminAPIException) as e:
+        await auth.authenticate(headers={'Authorization': f'Token {token}'})
+
+    assert e.value.get_error().code == 'token_error'
+
+
+@pytest.mark.asyncio
 async def test_authenticate_not_admin(sqlite_sessionmaker):
     auth = sqlalchemy.SQLAlchemyJWTAdminAuthentication(
         secret='123',

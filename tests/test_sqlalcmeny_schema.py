@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 
 from admin_panel.auth import UserABC
-from admin_panel.integrations.sqlalchemy.table import SQLAlchemyAdmin, SQLAlchemyFieldsSchema
+from admin_panel import sqlalchemy
 from admin_panel.schema.category import CategorySchemaData, FieldSchemaData, FieldsSchemaData, TableInfoSchemaData
 from admin_panel.schema.table.table_models import (
     AutocompleteData, AutocompleteResult, CreateResult, ListData, RetrieveResult, TableListResult, UpdateResult)
@@ -110,7 +110,7 @@ FIELDS = ['id', 'title', 'description', 'secret_key', 'currency_id', 'merchant_i
 
 @pytest.mark.asyncio
 async def test_sqlalchemy_table_schema():
-    fields_schema = SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS)
+    fields_schema = sqlalchemy.SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS)
     language_manager = CustomLanguageManager('ru')
     new_schema = fields_schema.generate_schema(UserABC(username="test"), language_manager)
     assert new_schema == table_schema_data
@@ -118,10 +118,10 @@ async def test_sqlalchemy_table_schema():
 
 @pytest.mark.asyncio
 async def test_generate_category_schema(sqlite_sessionmaker):
-    category = SQLAlchemyAdmin(
+    category = sqlalchemy.SQLAlchemyAdmin(
         model=Terminal,
         db_async_session=sqlite_sessionmaker,
-        table_schema=SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS),
+        table_schema=sqlalchemy.SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS),
     )
     language_manager = CustomLanguageManager('ru')
     new_schema = category.generate_schema(UserABC(username="test"), language_manager)
@@ -130,10 +130,10 @@ async def test_generate_category_schema(sqlite_sessionmaker):
 
 @pytest.mark.asyncio
 async def test_create(sqlite_sessionmaker):
-    category = SQLAlchemyAdmin(
+    category = sqlalchemy.SQLAlchemyAdmin(
         model=Terminal,
         db_async_session=sqlite_sessionmaker,
-        table_schema=SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS)
+        table_schema=sqlalchemy.SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS)
     )
     language_manager = CustomLanguageManager('ru')
 
@@ -207,7 +207,7 @@ async def test_create(sqlite_sessionmaker):
 
 @pytest.mark.asyncio
 async def test_autocomplete(sqlite_sessionmaker):
-    category = SQLAlchemyAdmin(model=Terminal, db_async_session=sqlite_sessionmaker)
+    category = sqlalchemy.SQLAlchemyAdmin(model=Terminal, db_async_session=sqlite_sessionmaker)
     language_manager = CustomLanguageManager('ru')
 
     user = UserABC(username="test")
