@@ -21,6 +21,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
         from sqlalchemy.dialects.postgresql import ARRAY
         from sqlalchemy.sql import sqltypes
         from sqlalchemy.sql.schema import Column
+        from sqlalchemy.ext.mutable import Mutable
 
         mapper = inspect(self.model).mapper
         added_fields = []
@@ -54,6 +55,9 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
                 py_t = col_type.python_type
             except Exception:
                 py_t = None
+
+            impl = getattr(attr, 'impl', None)
+            is_mutable = isinstance(impl, Mutable)
 
             # Foreign key column
             if col.foreign_keys:
@@ -97,6 +101,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             elif isinstance(col_type, ARRAY):
                 field_class = schema.ArrayField
                 field_data["array_type"] = type(col_type.item_type).__name__.lower()
+                field_data["read_only"] = not is_mutable
 
             elif isinstance(col_type, sqltypes.NullType):
                 continue

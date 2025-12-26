@@ -67,6 +67,10 @@ table_schema_data = FieldsSchemaData(
             label='other_field',
             read_only=True,
         ),
+        'whitelist_ips': FieldSchemaData(
+            type='array',
+            label='Белый список IP',
+        ),
     },
 )
 

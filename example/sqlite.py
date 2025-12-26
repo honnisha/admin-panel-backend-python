@@ -8,6 +8,7 @@ ASYNC_ENGINE = create_async_engine(
     future=True,
 )
 
+
 @event.listens_for(ASYNC_ENGINE.sync_engine, "connect")
 def _enable_fk_async(dbapi_connection, _):
     cursor = dbapi_connection.cursor()

@@ -280,7 +280,11 @@ class SQLAlchemyAdminUpdate:
             record = (await session.execute(stmt)).scalars().first()
 
         if record is None:
-            return None
+            msg = _('record_not_found') % {'pk_name': self.pk_name, 'pk': pk}
+            raise AdminAPIException(
+                APIError(message=msg, code='record_not_found'),
+                status_code=400,
+            )
 
         deserialized_data = await self.table_schema.deserialize(
             data,

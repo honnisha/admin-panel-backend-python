@@ -1,15 +1,17 @@
 import asyncio
 import datetime
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from faker import Faker
-
+import logging
 from admin_panel import auth, schema
 from admin_panel.exceptions import FieldError
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
+
+logger = logging.getLogger('admin_panel')
 
 
 class PaymentFiltersSchema(schema.FieldsSchema):
@@ -35,6 +37,7 @@ class PaymentFieldsSchema(schema.FieldsSchema):
     endpoint = schema.StringField(label=_('endpoint'))
     description = schema.StringField(label=_('description'))
     other_field = schema.StringField(read_only=True)
+    whitelist_ips = schema.ArrayField(label=_('whitelist_ips'))
     status = schema.ChoiceField(
         label=_('status'),
         tag_colors=STATUS_COLORS,
@@ -130,6 +133,7 @@ class PaymentsAdmin(schema.CategoryTable):
             'amount': 10 * fake.pyint(min_value=0, max_value=100),
             'status': status,
             'endpoint': fake.word(),
+            'whitelist_ips': ['localhost', '0.0.0.0'],
             'description': fake.sentence(nb_words=5),
             'other_field': fake.word(),
             'image': f'https://picsum.photos/id/{5039-pk+1}/200/300',
@@ -176,6 +180,7 @@ class PaymentsAdmin(schema.CategoryTable):
             user: auth.UserABC,
             language_manager: LanguageManager,
     ) -> schema.UpdateResult:
+        logger.info('Updated pk=%s data=%s', pk, data)
         await asyncio.sleep(0.5)
         return schema.UpdateResult(pk=0)
 
@@ -185,4 +190,5 @@ class PaymentsAdmin(schema.CategoryTable):
             auth.UserABC,
             language_manager: LanguageManager,
     ) -> schema.CreateResult:
+        logger.info('Create data=%s', data)
         return schema.CreateResult(pk=0)

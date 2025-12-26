@@ -146,6 +146,7 @@ class ArrayField(TableField):
 
         return schema
 
+
 @dataclass
 class FileField(TableField):
     _type = 'file'

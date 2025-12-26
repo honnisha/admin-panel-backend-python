@@ -71,6 +71,7 @@ LANGUAGES_PHRASES = {
         'merchants': 'Мерчанты',
         'terminals': 'Терминалы',
         'currencies': 'Валюты',
+        'whitelist_ips': 'Белый список IP',
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
@@ -98,5 +99,6 @@ LANGUAGES_PHRASES = {
         'merchants': 'Merchants',
         'terminals': 'Terminals',
         'currencies': 'Currencies',
+        'whitelist_ips': 'Whitelist IPs',
     },
 }
