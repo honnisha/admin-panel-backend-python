@@ -94,6 +94,14 @@ class SQLAlchemyAdminListMixin:
 
         return stmt
 
+    def apply_pagination(self, stmt, list_data: schema.ListData):
+        page = max(1, list_data.page or 1)
+        limit = min(150, max(1, list_data.limit or 25))
+
+        offset = (page - 1) * limit
+
+        return stmt.limit(limit).offset(offset)
+
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-locals
     async def get_list(
@@ -111,6 +119,7 @@ class SQLAlchemyAdminListMixin:
         stmt = self.apply_search(stmt, list_data)
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
+        stmt = self.apply_pagination(stmt, list_data)
 
         # Count
         try:

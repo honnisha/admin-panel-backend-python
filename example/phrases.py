@@ -72,6 +72,7 @@ LANGUAGES_PHRASES = {
         'terminals': 'Терминалы',
         'currencies': 'Валюты',
         'whitelist_ips': 'Белый список IP',
+        'users': 'Пользователи',
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
@@ -100,5 +101,6 @@ LANGUAGES_PHRASES = {
         'terminals': 'Terminals',
         'currencies': 'Currencies',
         'whitelist_ips': 'Whitelist IPs',
+        'users': 'Users',
     },
 }

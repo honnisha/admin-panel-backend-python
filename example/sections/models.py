@@ -51,7 +51,7 @@ class UserFactory(SQLAlchemyFactoryBase):
         sqlalchemy_session_factory = async_sessionmaker_
         sqlalchemy_session_persistence = "commit"
 
-    username = factory.Faker("word")
+    username = factory.Sequence(lambda n: f"user_{n}")
     email = factory.Faker("email")
 
 
