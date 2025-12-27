@@ -1,10 +1,11 @@
 import asyncio
 import datetime
+import logging
 import uuid
 from typing import Any
 
 from faker import Faker
-import logging
+
 from admin_panel import auth, schema
 from admin_panel.exceptions import FieldError
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action

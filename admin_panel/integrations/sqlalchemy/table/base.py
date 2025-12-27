@@ -44,7 +44,11 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
         if self.search_fields:
             self.search_enabled = True
             self.search_help = _('search_help') % {'fields': ', '.join(self.search_fields)}
-            self.validate_search_fields()
+
+        if ordering_fields:
+            self.ordering_fields = ordering_fields
+
+        self.validate_fields()
 
         if not self.table_schema:
             self.table_schema = SQLAlchemyFieldsSchema(model=self.model)
@@ -71,9 +75,6 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
             msg = f'{type(self).__name__}.db_async_session is required for SQLAlchemy'
             raise AttributeError(msg)
 
-        if ordering_fields:
-            self.ordering_fields = ordering_fields
-
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
         from sqlalchemy.sql.schema import Column
@@ -86,20 +87,25 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
 
         super().__init__(*args, **kwargs)
 
-    def validate_search_fields(self):
-        if not self.search_fields:
-            return
-
+    def validate_fields(self):
         # pylint: disable=import-outside-toplevel
         from sqlalchemy.orm import InstrumentedAttribute
 
-        for field in self.search_fields:
-            column = getattr(self.model, field, None)
-            if not isinstance(column, InstrumentedAttribute):
-                raise AttributeError(
-                    f'{type(self).__name__}: search field "{field}" not found in model {self.model.__name__}'
-                )
+        if self.search_fields:
+            for field in self.search_fields:
+                column = getattr(self.model, field, None)
+                if not isinstance(column, InstrumentedAttribute):
+                    raise AttributeError(
+                        f'{type(self).__name__}: search field "{field}" not found in model {self.model.__name__}'
+                    )
 
+        if self.ordering_fields:
+            for field in self.ordering_fields:
+                column = getattr(self.model, field, None)
+                if not isinstance(column, InstrumentedAttribute):
+                    raise AttributeError(
+                        f'{type(self).__name__}: ordering field "{field}" not found in model {self.model.__name__}'
+                    )
 
     def get_queryset(self):
         # pylint: disable=import-outside-toplevel

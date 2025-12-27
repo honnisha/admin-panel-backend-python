@@ -10,6 +10,32 @@ logger = logging.getLogger('admin_panel')
 
 
 class SQLAlchemyAdminListMixin:
+    def apply_ordering(self, stmt, list_data):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import asc, desc
+        from sqlalchemy.orm import InstrumentedAttribute
+
+        if not list_data.ordering:
+            return stmt
+
+        ordering = list_data.ordering
+        direction = asc
+
+        if ordering.startswith("-"):
+            ordering = ordering[1:]
+            direction = desc
+
+        if ordering not in self.ordering_fields:
+            msg = f'Ordering "{ordering}" is not allowed; available options: {self.ordering_fields}'
+            raise ValueError(msg)
+
+        column = getattr(self.model, ordering, None)
+        if not isinstance(column, InstrumentedAttribute):
+            raise AttributeError(
+                f'{type(self).__name__} ordering field "{ordering}" not found in model {self.model}'
+            )
+
+        return stmt.order_by(direction(column))
 
     def apply_search(self, stmt, list_data: schema.ListData):
         # pylint: disable=import-outside-toplevel

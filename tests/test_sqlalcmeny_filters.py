@@ -123,3 +123,38 @@ async def test_list_bad_search_field(sqlite_sessionmaker):
         )
 
     assert str(e.value) == 'SQLAlchemyAdmin: search field "no_field" not found in model Terminal'
+
+
+@pytest.mark.asyncio
+async def test_ordering(sqlite_sessionmaker):
+    category = sqlalchemy.SQLAlchemyAdmin(
+        model=Terminal,
+        db_async_session=sqlite_sessionmaker,
+        ordering_fields=['id'],
+        table_schema=sqlalchemy.SQLAlchemyFieldsSchema(
+            model=Terminal,
+            fields=['id'],
+        ),
+    )
+    language_manager = CustomLanguageManager('ru')
+    user = auth.UserABC(username="test")
+
+    currency = await CurrencyFactory()
+    merchant = await MerchantFactory()
+
+    terminal_1 = await TerminalFactory(merchant=merchant, currency=currency)
+    terminal_2 = await TerminalFactory(merchant=merchant, currency=currency)
+
+    list_result: dict = await category.get_list(
+        list_data=schema.ListData(ordering='id'),
+        user=user,
+        language_manager=language_manager,
+    )
+    assert list_result == schema.TableListResult(data=[{'id': terminal_1.id}, {'id': terminal_2.id, }], total_count=2), 'сортировка по возрастанию'
+
+    list_result: dict = await category.get_list(
+        list_data=schema.ListData(ordering='-id'),
+        user=user,
+        language_manager=language_manager,
+    )
+    assert list_result == schema.TableListResult(data=[{'id': terminal_2.id}, {'id': terminal_1.id, }], total_count=2), 'сортировка по убыванию'
