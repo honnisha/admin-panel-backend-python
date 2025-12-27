@@ -17,7 +17,7 @@ logger = logging.getLogger('admin_panel')
 
 class PaymentFiltersSchema(schema.FieldsSchema):
     id = schema.IntegerField(label='ID')
-    created_at = schema.DateTimeField(label=_('created_at'))
+    created_at = schema.DateTimeField(label=_('created_at'), range=True)
 
     fields = [
         'id',

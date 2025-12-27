@@ -42,10 +42,10 @@ class SQLAlchemyAdminListMixin:
         from sqlalchemy import String, cast, or_
         from sqlalchemy.orm import InstrumentedAttribute
 
-        if not self.search_fields or not list_data.filters.search:
+        if not self.search_fields or not list_data.search:
             return stmt
 
-        search = f"%{list_data.filters.search}%"
+        search = f"%{list_data.search}%"
         conditions = []
 
         for field_slug in self.search_fields:
@@ -66,11 +66,11 @@ class SQLAlchemyAdminListMixin:
         from sqlalchemy import String, cast
         from sqlalchemy.orm import InstrumentedAttribute
 
-        if not self.table_filters or not list_data.filters.filters:
+        if not self.table_filters or not list_data.filters:
             return stmt
 
         # filters
-        for field_slug, value in list_data.filters.filters.items():
+        for field_slug, value in list_data.filters.items():
             available_filters = list(self.table_filters.get_fields().keys())
             if field_slug not in available_filters:
                 msg = f'{type(self).__name__} filter "{field_slug}" not found inside table_filters fields: {available_filters}'
@@ -117,6 +117,7 @@ class SQLAlchemyAdminListMixin:
         stmt = self.get_queryset()
         stmt = self.apply_filters(stmt, list_data)
         stmt = self.apply_search(stmt, list_data)
+        stmt = self.apply_ordering(stmt, list_data)
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         stmt = self.apply_pagination(stmt, list_data)

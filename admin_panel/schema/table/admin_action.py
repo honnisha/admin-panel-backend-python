@@ -1,18 +1,20 @@
 import functools
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, validate_call
 from pydantic.dataclasses import dataclass
 
 from admin_panel.schema.table.fields_schema import FieldsSchema
-from admin_panel.schema.table.table_models import ListFilters
 from admin_panel.translations import DataclassBase, TranslateText
 
 
 class ActionData(BaseModel):
     pks: List[Any] = Field(default_factory=list)
     form_data: dict = Field(default_factory=dict)
-    filters: ListFilters = Field(default_factory=ListFilters)
+
+    search: str | None = None
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
     send_to_all: bool = False
 
 

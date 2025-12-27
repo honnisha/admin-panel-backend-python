@@ -1,16 +1,16 @@
-from typing import List
+from typing import Any, Dict, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from admin_panel.schema import Category
 from admin_panel.schema.category import GraphInfoSchemaData
 from admin_panel.schema.table.fields_schema import FieldsSchema
-from admin_panel.schema.table.table_models import ListFilters
 from admin_panel.translations import LanguageManager, TranslateText
 
 
 class GraphData(BaseModel):
-    filters: ListFilters
+    search: str | None = None
+    filters: Dict[str, Any] = Field(default_factory=dict)
 
 
 class ChartData(BaseModel):

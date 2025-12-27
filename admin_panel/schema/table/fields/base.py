@@ -109,18 +109,14 @@ class DateTimeField(TableField):
     _type = 'datetime'
 
     format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+    range: bool | None = None
 
-    async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
-        if value:
-            return value.strftime(self.format)
-        return value
+    def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
+        schema = super().generate_schema(user, field_slug, language_manager)
 
+        schema.range = self.range
 
-@dataclass
-class DateTimeRangeField(TableField):
-    _type = 'datetime_range'
-
-    format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+        return schema
 
     async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
         if value:

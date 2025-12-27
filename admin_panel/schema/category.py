@@ -49,6 +49,9 @@ class FieldSchemaData(DataclassBase):
     precision: int | None = None
     scale: int | None = None
 
+    # DateTimeField
+    range: bool | None = None
+
 
 @dataclass
 class FieldsSchemaData(DataclassBase):

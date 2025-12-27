@@ -91,6 +91,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
             elif isinstance(col_type, sqltypes.DateTime) or py_t is datetime:
                 field_class = schema.DateTimeField
+                field_data["range"] = True
 
             elif isinstance(col_type, sqltypes.Boolean) or py_t is bool:
                 field_class = schema.BooleanField

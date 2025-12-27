@@ -1,7 +1,6 @@
 import pytest
 
 from admin_panel import auth, schema, sqlalchemy
-from admin_panel.schema.table.table_models import ListFilters
 from example.main import CustomLanguageManager
 from example.sections.models import CurrencyFactory, MerchantFactory, Terminal, TerminalFactory
 
@@ -30,21 +29,21 @@ async def test_list_filter(sqlite_sessionmaker):
     await TerminalFactory(title='other', merchant=merchant, currency=currency)
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters=ListFilters(filters={'id': terminal_1.id})),
+        list_data=schema.ListData(filters={'id': terminal_1.id}),
         user=user,
         language_manager=language_manager,
     )
     assert list_result == schema.TableListResult(data=[{'id': 1}], total_count=1), 'поиск по id'
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters=ListFilters(filters={'title': 'Test terminal second'})),
+        list_data=schema.ListData(filters={'title': 'Test terminal second'}),
         user=user,
         language_manager=language_manager,
     )
     assert list_result == schema.TableListResult(data=[{'id': terminal_2.id}], total_count=1), 'Полная строка'
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters=ListFilters(filters={'title': 'Test'})),
+        list_data=schema.ListData(filters={'title': 'Test'}),
         user=user,
         language_manager=language_manager,
     )
@@ -73,7 +72,7 @@ async def test_list_search(sqlite_sessionmaker):
     await TerminalFactory(title='other', merchant=merchant, currency=currency)
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters=ListFilters(search='Test')),
+        list_data=schema.ListData(search='Test'),
         user=user,
         language_manager=language_manager,
     )
@@ -106,7 +105,7 @@ async def test_filter_related(sqlite_sessionmaker):
     terminal_2 = await TerminalFactory(merchant=merchant_2, currency=currency)
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters=ListFilters(filters={'merchant_id': merchant_2.id})),
+        list_data=schema.ListData(filters={'merchant_id': merchant_2.id}),
         user=user,
         language_manager=language_manager,
     )

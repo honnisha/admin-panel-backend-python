@@ -12,11 +12,6 @@ class TableListResult(DataclassBase):
     total_count: int
 
 
-class ListFilters(BaseModel):
-    search: str | None = None
-    filters: Dict[str, Any] = Field(default_factory=dict)
-
-
 class AutocompleteData(BaseModel):
     field_slug: str
     search_string: str = ''
@@ -39,7 +34,10 @@ class AutocompleteResult(BaseModel):
 class ListData(BaseModel):
     page: int = 1
     limit: int = 25
-    filters: ListFilters = Field(default_factory=ListFilters)
+
+    search: str | None = None
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
     ordering: str | None = None
 
 
