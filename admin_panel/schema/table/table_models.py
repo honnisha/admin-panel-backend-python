@@ -40,7 +40,6 @@ class ListData(BaseModel):
     page: int = 1
     limit: int = 25
     filters: ListFilters = Field(default_factory=ListFilters)
-    search: str | None = None
     ordering: str | None = None
 
 

@@ -11,43 +11,60 @@ logger = logging.getLogger('admin_panel')
 
 class SQLAlchemyAdminListMixin:
 
-    def apply_filters(self, stmt, list_data):
+    def apply_search(self, stmt, list_data: schema.ListData):
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy import or_, String
+        from sqlalchemy import String, cast, or_
         from sqlalchemy.orm import InstrumentedAttribute
 
-        # whitelist из schema
-        allowed_fields = set(self.table_schema.get_fields().keys())
+        if not self.search_fields or not list_data.filters.search:
+            return stmt
+
+        search = f"%{list_data.filters.search}%"
+        conditions = []
+
+        for field_slug in self.search_fields:
+            column = getattr(self.model, field_slug, None)
+            if not isinstance(column, InstrumentedAttribute):
+                msg = f'{type(self).__name__} filter "{field_slug}" not found as field inside model {self.model}'
+                raise AttributeError(msg)
+
+            conditions.append(cast(column, String).ilike(search))
+
+        if conditions:
+            stmt = stmt.where(or_(*conditions))
+
+        return stmt
+
+    def apply_filters(self, stmt, list_data: schema.ListData):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import String, cast
+        from sqlalchemy.orm import InstrumentedAttribute
+
+        if not self.table_filters or not list_data.filters.filters:
+            return stmt
 
         # filters
-        for name, value in list_data.filters.filters.items():
-            if value is None or name not in allowed_fields:
-                continue
+        for field_slug, value in list_data.filters.filters.items():
+            available_filters = list(self.table_filters.get_fields().keys())
+            if field_slug not in available_filters:
+                msg = f'{type(self).__name__} filter "{field_slug}" not found inside table_filters fields: {available_filters}'
+                raise AttributeError(msg)
 
-            column = getattr(self.model, name, None)
+            column = getattr(self.model, field_slug, None)
             if not isinstance(column, InstrumentedAttribute):
-                continue
+                msg = f'{type(self).__name__} filter "{field_slug}" not found as field inside model {self.model}'
+                raise AttributeError(msg)
 
             if isinstance(value, list):
                 stmt = stmt.where(column.in_(value))
+
+            elif isinstance(value, str):
+                stmt = stmt.where(
+                    cast(column, String).like(f"%{value}%")
+                )
+
             else:
                 stmt = stmt.where(column == value)
-
-        # search (только по строковым и только разрешённым)
-        if list_data.search:
-            search = f"%{list_data.search}%"
-            conditions = []
-
-            for name in allowed_fields:
-                column = getattr(self.model, name, None)
-                if (
-                    isinstance(column, InstrumentedAttribute)
-                    and isinstance(column.property.columns[0].type, String)
-                ):
-                    conditions.append(column.ilike(search))
-
-            if conditions:
-                stmt = stmt.where(or_(*conditions))
 
         return stmt
 
@@ -63,12 +80,17 @@ class SQLAlchemyAdminListMixin:
         from sqlalchemy import func, select
         from sqlalchemy.orm import selectinload
 
+        stmt = self.get_queryset()
+        stmt = self.apply_filters(stmt, list_data)
+        stmt = self.apply_search(stmt, list_data)
+
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+
         # Count
         try:
             async with self.db_async_session() as session:
-                total_count = await session.scalar(
-                    select(func.count()).select_from(self.model)
-                )
+                total_count = await session.scalar(count_stmt)
+
         except ConnectionRefusedError as e:
             logger.exception(
                 'SQLAlchemy %s get_list db error: %s', type(self).__name__, e,
@@ -80,9 +102,6 @@ class SQLAlchemyAdminListMixin:
             ) from e
 
         total_count = int(total_count or 0)
-
-        stmt = self.get_queryset()
-        stmt = self.apply_filters(stmt, list_data)
 
         # Eager-load related fields
         for _slug, field in self.table_schema.get_fields().items():

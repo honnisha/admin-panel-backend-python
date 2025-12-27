@@ -76,6 +76,9 @@ class TableInfoSchemaData(DataclassBase):
 
     actions: Dict[str, dict] | None = Field(default_factory=dict)
 
+    def __repr__(self):
+        return f'<TableInfoSchemaData id={id(self)}>'
+
 
 @dataclass
 class GraphInfoSchemaData(DataclassBase):
@@ -93,6 +96,9 @@ class CategorySchemaData(DataclassBase):
 
     table_info: TableInfoSchemaData | None = None
     graph_info: GraphInfoSchemaData | None = None
+
+    def __repr__(self):
+        return f'<CategorySchemaData type={self.type} "{self.title}">'
 
 
 class Category(abc.ABC):

@@ -3,6 +3,7 @@ from typing import Any
 from admin_panel.integrations.sqlalchemy.autocomplete import SQLAlchemyAdminAutocompleteMixin
 from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSchema
 from admin_panel.schema.table.category_table import CategoryTable
+from admin_panel.translations import TranslateText as _
 
 
 def record_to_dict(record):
@@ -18,15 +19,32 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
     model: Any
     slug = None
     ordering_fields = []
-    search_enabled = True
+
+    search_fields = []
 
     table_schema: SQLAlchemyFieldsSchema
 
     db_async_session: Any = None
 
-    def __init__(self, *args, model=None, db_async_session=None, ordering_fields=None, **kwargs):
+    def __init__(
+            self,
+            *args,
+            model=None,
+            db_async_session=None,
+            ordering_fields=None,
+            search_fields=None,
+            **kwargs,
+    ):
         if model:
             self.model = model
+
+        if search_fields:
+            self.search_fields = search_fields
+
+        if self.search_fields:
+            self.search_enabled = True
+            self.search_help = _('search_help') % {'fields': ', '.join(self.search_fields)}
+            self.validate_search_fields()
 
         if not self.table_schema:
             self.table_schema = SQLAlchemyFieldsSchema(model=self.model)
@@ -67,6 +85,21 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
                 break
 
         super().__init__(*args, **kwargs)
+
+    def validate_search_fields(self):
+        if not self.search_fields:
+            return
+
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy.orm import InstrumentedAttribute
+
+        for field in self.search_fields:
+            column = getattr(self.model, field, None)
+            if not isinstance(column, InstrumentedAttribute):
+                raise AttributeError(
+                    f'{type(self).__name__}: search field "{field}" not found in model {self.model.__name__}'
+                )
+
 
     def get_queryset(self):
         # pylint: disable=import-outside-toplevel

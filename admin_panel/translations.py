@@ -59,6 +59,7 @@ DEFAULT_PHRASES = {
         'db_error_update': 'Ошибка обновления записи в базе данных.',
         'db_error_retrieve': 'Ошибка получения записи из базы данных.',
         'connection_refused_error': 'Ошибка подключения к базе данных: %(error)s',
+        'search_help': 'Доступные поля для поиска:\n%(fields)s'
     },
     'en': {
         'delete': 'Delete',
@@ -70,6 +71,7 @@ DEFAULT_PHRASES = {
         'db_error_create': 'Error creating a record in the database.',
         'db_error_retrieve': 'Error retrieving the record from the database.',
         'connection_refused_error': 'Database connection error: %(error)s',
+        'search_help': 'Available search fields:\n%(fields)s'
     }
 }
 

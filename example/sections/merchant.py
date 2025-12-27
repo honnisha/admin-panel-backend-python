@@ -12,6 +12,10 @@ class MerchantAdmin(sqlalchemy.SQLAlchemyAdmin):
         'id',
         'user_id',
     ]
+    search_fields = [
+        'id',
+        'title',
+    ]
 
     table_schema = sqlalchemy.SQLAlchemyFieldsSchema(
         model=Merchant,

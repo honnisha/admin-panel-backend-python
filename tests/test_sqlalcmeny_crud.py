@@ -95,7 +95,11 @@ async def test_list(sqlite_sessionmaker):
     )
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(),
+        list_data=schema.ListData(
+            filters={
+                'id': '',
+            }
+        ),
         user=user,
         language_manager=language_manager,
     )

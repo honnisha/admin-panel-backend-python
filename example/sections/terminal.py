@@ -8,6 +8,14 @@ class TerminalAdmin(sqlalchemy.SQLAlchemyAdmin):
     title = _('terminals')
     icon = 'mdi-console-network-outline'
 
+    ordering_fields = [
+        'id',
+    ]
+    search_fields = [
+        'id',
+        'title',
+    ]
+
     table_schema = sqlalchemy.SQLAlchemyFieldsSchema(
         model=Terminal,
         list_display=[

@@ -81,6 +81,7 @@ category_schema_data = CategorySchemaData(
     table_info=TableInfoSchemaData(
         table_schema=table_schema_data,
         search_enabled=True,
+        search_help='Доступные поля для поиска:\nid',
         pk_name='id',
         can_retrieve=True,
         can_update=True,
@@ -115,6 +116,7 @@ async def test_sqlalchemy_table_schema():
 @pytest.mark.asyncio
 async def test_generate_category_schema(sqlite_sessionmaker):
     category = sqlalchemy.SQLAlchemyAdmin(
+        search_fields=['id'],
         model=Terminal,
         db_async_session=sqlite_sessionmaker,
         table_schema=sqlalchemy.SQLAlchemyFieldsSchema(model=Terminal, fields=FIELDS),
