@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 
 from admin_panel import auth, schema, sqlalchemy
@@ -16,7 +18,8 @@ async def test_list_filter(sqlite_sessionmaker):
         ),
         table_filters=sqlalchemy.SQLAlchemyFieldsSchema(
             model=Terminal,
-            fields=['id', 'title'],
+            fields=['id', 'title', 'created_at'],
+            created_at=schema.DateTimeField(range=True),
         ),
     )
     language_manager = CustomLanguageManager('ru')
@@ -48,6 +51,19 @@ async def test_list_filter(sqlite_sessionmaker):
         language_manager=language_manager,
     )
     assert list_result == schema.TableListResult(data=[{'id': terminal_1.id}, {'id': terminal_2.id}], total_count=2), 'Частичное вхождение'
+
+    terminal_old = await TerminalFactory(
+        title='Old terminal',
+        merchant=merchant,
+        currency=currency,
+        created_at=datetime(2023, 6, 1, 12, 0, 0),
+    )
+    list_result: dict = await category.get_list(
+        list_data=schema.ListData(filters={'created_at': {'from': '2022-12-04T18:55:00', 'to': '2023-12-17T18:55:00'}}),
+        user=user,
+        language_manager=language_manager,
+    )
+    assert list_result == schema.TableListResult(data=[{'id': terminal_old.id}], total_count=1), 'Фильтр по периоду'
 
 
 @pytest.mark.asyncio

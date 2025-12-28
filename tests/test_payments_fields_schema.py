@@ -1,108 +1,14 @@
 import pytest
 
 from admin_panel.auth import UserABC
-from admin_panel.schema.category import CategorySchemaData, FieldSchemaData, FieldsSchemaData, TableInfoSchemaData
 from example.main import CustomLanguageManager
-from example.sections.payments import PaymentFieldsSchema, PaymentsAdmin
+from example.sections.payments import PaymentsAdmin
 
-table_schema_data = FieldsSchemaData(
-    list_display=[
-        'id',
-        'amount',
-        'endpoint',
-        'status',
-        'description',
-        'created_at',
-        'get_provider_registry',
-        'get_provider_registry_info',
-    ],
-    fields={
-        'id': FieldSchemaData(
-            type='integer',
-            label='ID',
-            read_only=True,
-        ),
-        'amount': FieldSchemaData(
-            type='integer',
-            label='Сумма',
-            read_only=True,
-        ),
-        'endpoint': FieldSchemaData(
-            type='string',
-            label='Эндпоинт',
-        ),
-        'status': FieldSchemaData(
-            type='choice',
-            label='Статус',
-            choices=[
-                {'value': 'process', 'title': 'Process'},
-                {'value': 'success', 'title': 'Success'},
-                {'value': 'error', 'title': 'Error'},
-            ],
-            tag_colors={'process': 'grey-lighten-1', 'success': 'green-darken-1', 'error': 'red-lighten-2'},
-            variant='elevated',
-            size='default',
-        ),
-        'description': FieldSchemaData(
-            type='string',
-            label='Описание',
-        ),
-        'created_at': FieldSchemaData(
-            type='datetime',
-            label='Время создания',
-            read_only=True,
-        ),
-        'get_provider_registry': FieldSchemaData(
-            type='boolean',
-            label='Реестр проверен',
-            read_only=True,
-        ),
-        'get_provider_registry_info': FieldSchemaData(
-            type='boolean',
-            label='Информация по реестру провайдера',
-            read_only=True,
-        ),
-        'other_field': FieldSchemaData(
-            type='string',
-            label='other_field',
-            read_only=True,
-        ),
-        'whitelist_ips': FieldSchemaData(
-            type='array',
-            label='Белый список IP',
-        ),
-    },
-)
-
-table_filtes = FieldsSchemaData(
-    fields={
-        'id': FieldSchemaData(
-            type='integer',
-            label='ID',
-        ),
-        'created_at': FieldSchemaData(
-            type='datetime',
-            label='Время создания',
-        ),
-    },
-    list_display=['id', 'created_at'],
-)
-
-category_schema_data = CategorySchemaData(
-    title='Платежи',
-    icon='mdi-credit-card-outline',
-    type='table',
-    table_info=TableInfoSchemaData(
-        table_schema=table_schema_data,
-        pk_name='id',
-        can_retrieve=True,
-        can_update=True,
-        search_enabled=True,
-        can_create=True,
-        search_help='Доступные поля для поиска: id',
-        ordering_fields=['id'],
-        table_filters=table_filtes,
-        actions={
+category_schema_data = {
+    'graph_info': None,
+    'icon': 'mdi-credit-card-outline',
+    'table_info': {
+        'actions': {
             'action_with_exception': {
                 'allow_empty_selection': True,
                 'base_color': None,
@@ -117,23 +23,30 @@ category_schema_data = CategorySchemaData(
                 'allow_empty_selection': True,
                 'base_color': None,
                 'confirmation_text': None,
-                'description': 'Создать платеж и отправить его на обработку в платежную систему.',
-                'form_schema': FieldsSchemaData(
-                    fields={
-                        'amount': FieldSchemaData(
-                            type='integer',
-                            label='Сумма',
-                        ),
-                        'is_throw_error': FieldSchemaData(
-                            type='boolean',
-                            label='Выбросить ошибку?',
-                        ),
+                'description': 'Создать платеж и отправить его на обработку в платежную '
+                'систему.',
+                'form_schema': {
+                    'fields': {
+                        'amount': {
+                            'header': {},
+                            'label': 'Сумма',
+                            'read_only': False,
+                            'required': False,
+                            'type': 'integer',
+                        },
+                        'is_throw_error': {
+                            'header': {},
+                            'label': 'Выбросить ошибку?',
+                            'read_only': False,
+                            'required': False,
+                            'type': 'boolean',
+                        },
                     },
-                    list_display=[
+                    'list_display': [
                         'amount',
                         'is_throw_error',
                     ],
-                ),
+                },
                 'icon': None,
                 'title': 'Создать платеж',
                 'variant': None,
@@ -150,16 +63,151 @@ category_schema_data = CategorySchemaData(
                 'variant': 'outlined',
             },
         },
-    ),
-)
-
-
-@pytest.mark.asyncio
-async def test_payments_schema(mocker):
-    fields_schema = PaymentFieldsSchema()
-    language_manager = CustomLanguageManager('ru')
-    new_schema = fields_schema.generate_schema(UserABC(username="test"), language_manager)
-    assert new_schema == table_schema_data
+        'can_create': True,
+        'can_retrieve': True,
+        'can_update': True,
+        'ordering_fields': [
+            'id',
+        ],
+        'pk_name': 'id',
+        'search_enabled': True,
+        'search_help': 'Доступные поля для поиска: id',
+        'table_filters': {
+            'fields': {
+                'created_at': {
+                    'header': {},
+                    'label': 'Время создания',
+                    'range': True,
+                    'read_only': False,
+                    'required': False,
+                    'type': 'datetime',
+                    'include_date': True,
+                    'include_time': True,
+                },
+                'id': {
+                    'header': {},
+                    'label': 'ID',
+                    'read_only': False,
+                    'required': False,
+                    'type': 'integer',
+                },
+            },
+            'list_display': [
+                'id',
+                'created_at',
+            ],
+        },
+        'table_schema': {
+            'fields': {
+                'amount': {
+                    'header': {},
+                    'label': 'Сумма',
+                    'read_only': True,
+                    'required': False,
+                    'type': 'integer',
+                },
+                'created_at': {
+                    'header': {},
+                    'label': 'Время создания',
+                    'read_only': True,
+                    'required': False,
+                    'type': 'datetime',
+                    'include_date': True,
+                    'include_time': True,
+                },
+                'description': {
+                    'header': {},
+                    'label': 'Описание',
+                    'read_only': False,
+                    'required': False,
+                    'type': 'string',
+                },
+                'endpoint': {
+                    'header': {},
+                    'label': 'Эндпоинт',
+                    'read_only': False,
+                    'required': False,
+                    'type': 'string',
+                },
+                'get_provider_registry': {
+                    'header': {},
+                    'label': 'Реестр проверен',
+                    'read_only': True,
+                    'required': False,
+                    'type': 'boolean',
+                },
+                'get_provider_registry_info': {
+                    'header': {},
+                    'label': 'Информация по реестру провайдера',
+                    'read_only': True,
+                    'required': False,
+                    'type': 'boolean',
+                },
+                'id': {
+                    'header': {},
+                    'label': 'ID',
+                    'read_only': True,
+                    'required': False,
+                    'type': 'integer',
+                },
+                'other_field': {
+                    'header': {},
+                    'label': 'Other Field',
+                    'read_only': True,
+                    'required': False,
+                    'type': 'string',
+                },
+                'status': {
+                    'choices': [
+                        {
+                            'title': 'Process',
+                            'value': 'process',
+                        },
+                        {
+                            'title': 'Success',
+                            'value': 'success',
+                        },
+                        {
+                            'title': 'Error',
+                            'value': 'error',
+                        },
+                    ],
+                    'header': {},
+                    'label': 'Статус',
+                    'read_only': False,
+                    'required': False,
+                    'size': 'default',
+                    'tag_colors': {
+                        'error': 'red-lighten-2',
+                        'process': 'grey-lighten-1',
+                        'success': 'green-darken-1',
+                    },
+                    'type': 'choice',
+                    'variant': 'elevated',
+                },
+                'whitelist_ips': {
+                    'header': {},
+                    'label': 'Белый список IP',
+                    'read_only': False,
+                    'required': False,
+                    'type': 'array',
+                },
+            },
+            'list_display': [
+                'id',
+                'amount',
+                'endpoint',
+                'status',
+                'description',
+                'created_at',
+                'get_provider_registry',
+                'get_provider_registry_info',
+            ],
+        },
+    },
+    'title': 'Платежи',
+    'type': 'table',
+ }
 
 
 @pytest.mark.asyncio
@@ -167,4 +215,4 @@ async def test_generate_category_schema():
     category = PaymentsAdmin()
     language_manager = CustomLanguageManager('ru')
     new_schema = category.generate_schema(UserABC(username="test"), language_manager)
-    assert new_schema == category_schema_data
+    assert new_schema.model_dump() == category_schema_data, new_schema.model_dump()

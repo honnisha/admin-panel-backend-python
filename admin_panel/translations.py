@@ -58,8 +58,10 @@ DEFAULT_PHRASES = {
         'db_error_create': 'Ошибка создания записи в базе данных.',
         'db_error_update': 'Ошибка обновления записи в базе данных.',
         'db_error_retrieve': 'Ошибка получения записи из базы данных.',
+        'db_error_list': 'Ошибка получения данных таблицы из базы данных.',
         'connection_refused_error': 'Ошибка подключения к базе данных: %(error)s',
-        'search_help': 'Доступные поля для поиска:\n%(fields)s'
+        'search_help': 'Доступные поля для поиска:\n%(fields)s',
+        'filters_exception': 'Произошла неизвестная техническая ошибка при фильтрации данных.',
     },
     'en': {
         'delete': 'Delete',
@@ -70,8 +72,10 @@ DEFAULT_PHRASES = {
         'db_error_update': 'Error updating the record in the database.',
         'db_error_create': 'Error creating a record in the database.',
         'db_error_retrieve': 'Error retrieving the record from the database.',
+        'db_error_list': 'Failed to retrieve table data from the database.',
         'connection_refused_error': 'Database connection error: %(error)s',
-        'search_help': 'Available search fields:\n%(fields)s'
+        'search_help': 'Available search fields:\n%(fields)s',
+        'filters_exception': 'An unknown technical error occurred while filtering data.',
     }
 }
 

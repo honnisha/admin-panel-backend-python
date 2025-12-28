@@ -1,5 +1,6 @@
 from typing import Dict
 
+from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 from admin_panel.translations import TranslateText
@@ -26,7 +27,7 @@ class APIError(DataclassBase):
 
 @dataclass
 class AdminAPIException(DataclassBase, Exception):
-    error: APIError
+    error: APIError = Field(default_factory=APIError)
     status_code: int = 400
     error_code: str | None = None
 

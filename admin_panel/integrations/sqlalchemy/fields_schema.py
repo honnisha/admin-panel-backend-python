@@ -3,38 +3,41 @@ from typing import Any
 
 from admin_panel import schema
 from admin_panel.integrations.sqlalchemy.fields import SQLAlchemyRelatedField
+from admin_panel.schema.table.fields.base import DateTimeField
 from admin_panel.utils import humanize_field_name
 
 
 class SQLAlchemyFieldsSchema(schema.FieldsSchema):
     model: Any
 
-    def __init__(self, model=None, *args, **kwargs):
+    def __init__(self, *args, model=None, **kwargs):
         if model:
             self.model = model
 
         super().__init__(*args, **kwargs)
 
-    def post_init(self, *args, **kwargs):
+    def generate_fields(self, kwargs) -> dict:
+        generated_fields = super().generate_fields(kwargs)
+
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
         from sqlalchemy.dialects.postgresql import ARRAY
+        from sqlalchemy.ext.mutable import Mutable
         from sqlalchemy.sql import sqltypes
         from sqlalchemy.sql.schema import Column
-        from sqlalchemy.ext.mutable import Mutable
 
         mapper = inspect(self.model).mapper
-        added_fields = []
+
         for attr in mapper.column_attrs:
             col: Column = attr.columns[0]
-            name = attr.key
+            field_slug = attr.key
 
-            if self.fields and name not in self.fields:
+            if field_slug in generated_fields:
                 continue
 
             field_data = {}
             info = col.info or {}
-            field_data["label"] = info.get('label', humanize_field_name(name))
+            field_data["label"] = info.get('label', humanize_field_name(field_slug))
             field_data["help_text"] = info.get('help_text')
 
             field_data["read_only"] = col.primary_key
@@ -91,7 +94,6 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
             elif isinstance(col_type, sqltypes.DateTime) or py_t is datetime:
                 field_class = schema.DateTimeField
-                field_data["range"] = True
 
             elif isinstance(col_type, sqltypes.Boolean) or py_t is bool:
                 field_class = schema.BooleanField
@@ -107,22 +109,81 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             elif isinstance(col_type, sqltypes.NullType):
                 continue
 
-            else:
-                msg = f'SQLAlchemy autogenerate ORM field {self.model.__name__}.{name} is not supported for type: {col_type}'
+            elif not self.fields:
+                msg = f'SQLAlchemy autogenerate ORM field {self.model.__name__}.{field_slug} is not supported for type: {col_type}'
                 raise AttributeError(msg)
 
             schema_field = field_class(**field_data)
-            setattr(self, name, schema_field)
 
             if col.primary_key:
-                added_fields.insert(0, name)
+                generated_fields = {field_slug: schema_field, **generated_fields}
             else:
-                added_fields.append(name)
+                generated_fields[field_slug] = schema_field
 
-        if not self.fields:
-            self.fields = added_fields
+        for rel in mapper.relationships:
+            field_slug = rel.key
 
-        super().post_init(*args, **kwargs)
+            if field_slug in generated_fields:
+                continue
+
+            field_data = {}
+
+            info = rel.info or {}
+            field_data["label"] = info.get('label', humanize_field_name(field_slug))
+            field_data["help_text"] = info.get('help_text')
+
+            field_data["read_only"] = False
+            field_data["required"] = False
+
+            field_data["many"] = rel.uselist
+
+            field_class = SQLAlchemyRelatedField
+
+            generated_fields[field_slug] = field_class(**field_data)
+
+        return generated_fields
+
+    def apply_filters(self, stmt, filters: dict):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import String, cast
+        from sqlalchemy.orm import InstrumentedAttribute
+
+        # filters
+        for field_slug, value in filters.items():
+            field = self.get_field(field_slug)
+
+            if not field:
+                available_filters = list(self.get_fields().keys())
+                msg = f'{type(self).__name__} filter "{field_slug}" not found inside table_filters fields: {available_filters}'
+                raise AttributeError(msg)
+
+            column = getattr(self.model, field_slug, None)
+
+            if issubclass(type(field), DateTimeField) and field.range:
+                if not isinstance(value, dict) or not value.get('from') or not value.get('to'):
+                    msg = f'{type(self).__name__} filter "{field_slug}" value must be dict with from,to values'
+                    raise AttributeError(msg)
+
+                stmt = stmt.where(column >= datetime.datetime.fromisoformat(value['from']))
+                stmt = stmt.where(column <= datetime.datetime.fromisoformat(value['to']))
+                continue
+
+            if not isinstance(column, InstrumentedAttribute):
+                msg = f'{type(self).__name__} filter "{field_slug}" not found as field inside model {self.model}'
+                raise AttributeError(msg)
+
+            if isinstance(value, list):
+                stmt = stmt.where(column.in_(value))
+
+            elif isinstance(value, str):
+                stmt = stmt.where(
+                    cast(column, String).like(f"%{value}%")
+                )
+
+            else:
+                stmt = stmt.where(column == value)
+
+        return stmt
 
     async def serialize(self, line_data: dict, extra: dict, *args, **kwargs) -> dict:
         for field_slug, field in self.get_fields().items():

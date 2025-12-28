@@ -5,6 +5,11 @@ from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSc
 from admin_panel.schema.table.category_table import CategoryTable
 from admin_panel.translations import TranslateText as _
 
+EXCEPTION_REL_NAME = '''
+Model "{model_name}" doesn\'t contain rel_name:"{rel_name}" for field "{slug}"
+Model fields = {model_attrs}
+'''
+
 
 def record_to_dict(record):
     # pylint: disable=import-outside-toplevel
@@ -56,10 +61,6 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
         if not issubclass(type(self.table_schema), SQLAlchemyFieldsSchema):
             msg = f'{type(self).__name__}.table_schema {self.table_schema} must be subclass of SQLAlchemyFieldsSchema'
             raise AttributeError(msg)
-
-        stmt = self.get_queryset()
-        if not self.model and stmt:
-            model = stmt.column_descriptions[0]["entity"]
 
         if not self.model:
             msg = f'{type(self).__name__}.model is required for SQLAlchemy'
@@ -120,10 +121,16 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
             # pylint: disable=protected-access
             if field._type == "related" and field.rel_name:
 
+                # pylint: disable=import-outside-toplevel
+                from sqlalchemy import inspect
+
+                model_attrs = [attr.key for attr in inspect(self.model).mapper.attrs]
                 if not hasattr(self.model, field.rel_name):
-                    msg = (
-                        f'Model {self.model.__name__} do not contain rel_name:"{field.rel_name} '
-                        f'for field "{slug}" {field}'
+                    msg = EXCEPTION_REL_NAME.format(
+                        slug=slug,
+                        model_name=self.model.__name__,
+                        rel_name=field.rel_name,
+                        model_attrs=model_attrs,
                     )
                     raise AttributeError(msg)
 

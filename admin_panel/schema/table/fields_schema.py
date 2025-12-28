@@ -1,16 +1,20 @@
 import asyncio
 from typing import Any, ClassVar, Dict, List
 
+from pydantic import Field
 from pydantic_core import core_schema
 
 from admin_panel.auth import UserABC
 from admin_panel.exceptions import AdminAPIException, APIError, FieldError
-from admin_panel.schema.category import FieldsSchemaData
+from admin_panel.schema.category import FieldSchemaData, FieldsSchemaData
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.translations import LanguageManager
 from admin_panel.utils import DeserializeAction
 
+NOT_FUND_EXCEPTION = '''Field slug "{field_slug}" not found inside generated fields inside {class_name}
+Available options: {available_fields}
+'''
 
 class DeserializeError(Exception):
     pass
@@ -27,11 +31,15 @@ class FieldsSchema:
     readonly_fields: ClassVar[List | None] = None
 
     # Generated fields
-    _fields_list: List | None = None
+    _generated_fields: dict = None
 
     def __init__(self, *args, list_display=None, readonly_fields=None, fields=None, **kwargs):
         if fields:
             self.fields = fields
+
+        if self.fields and not isinstance(self.fields, list):
+            msg = f'{type(self).__name__}.fields must be a list instance; found: {self.fields}'
+            raise AttributeError(msg)
 
         if list_display:
             self.list_display = list_display
@@ -39,37 +47,31 @@ class FieldsSchema:
         if readonly_fields:
             self.readonly_fields = readonly_fields
 
-        # Fields from kwargs
-        for k, v in kwargs.items():
-            if issubclass(type(v), TableField):
-                setattr(self, k, v)
+        generated_fields = self.generate_fields(kwargs)
 
-        # Generation FunctionField
-        for attribute_name in dir(self):
-            if '__' in attribute_name:
-                continue
-
-            attribute = getattr(self, attribute_name)
-            if getattr(attribute, '__function_field__', False):
-                field = FunctionField(fn=attribute, **attribute.__kwargs__)
-                field.read_only = True
-                setattr(self, attribute.__name__, field)
-
-        # Autogenerate fields
+        available_fields = list(generated_fields.keys())
         if self.fields is None:
-            self.fields = []
-            for attribute_name in dir(self):
-                if '__' in attribute_name:
-                    continue
+            self.fields = available_fields
 
-                attribute = getattr(self, attribute_name)
-                if issubclass(type(attribute), TableField):
-                    self.fields.append(attribute_name)
+        self._generated_fields = {}
+        for field_slug in self.fields:
+            if not isinstance(field_slug, str):
+                msg = f'{type(self).__name__} field "{field_slug}" must be string'
+                raise AttributeError(msg)
 
-        self.post_init(*args, **kwargs)
+            if field_slug not in generated_fields:
+                msg = NOT_FUND_EXCEPTION.format(
+                    field_slug=field_slug,
+                    available_fields=available_fields,
+                    class_name=type(self).__name__,
+                )
+                raise AttributeError(msg)
 
-    def post_init(self, *args, **kwargs):
+            self._generated_fields[field_slug] = generated_fields[field_slug]
 
+        self.validate_fields(*args, **kwargs)
+
+    def validate_fields(self, *args, **kwargs):
         if not self.fields:
             msg = f'Schema {type(self).__name__}.fields is empty'
             raise AttributeError(msg)
@@ -88,11 +90,12 @@ class FieldsSchema:
             for field_slug in self.readonly_fields:
                 field = self.get_field(field_slug)
                 if not field:
-                    msg = f'Field "{field_slug}" from readonly_fields is not found'
+                    msg = f'{type(self).__name__} field "{field_slug}" from readonly_fields is not found inside fields; available options: {self.fields}'
                     raise AttributeError(msg)
 
                 field.read_only = True
 
+        # Fill list_display
         if self.list_display is None:
             self.list_display = self.fields
 
@@ -101,41 +104,51 @@ class FieldsSchema:
                 msg = f'Field "{field_slug}" inside {type(self).__name__}.list_display, but not presented as field; available options: {self.fields}'
                 raise AttributeError(msg)
 
-    def _generate_fields(self):
-        for attribute_name in self.fields:
-            if not isinstance(attribute_name, str):
-                msg = f'{type(self).__name__} field "{attribute_name}" must be string'
-                raise AttributeError(msg)
+    def generate_fields(self, kwargs) -> dict:
+        generated_fields = {}
 
-            attribute = getattr(self, attribute_name, None)
+        # Fields from kwargs
+        for k, v in kwargs.items():
+            if issubclass(type(v), TableField) and not hasattr(self, k):
+                generated_fields[k] = v
 
-            if not attribute:
-                msg = f'Field slug "{attribute_name}" not found as attribute in {type(self).__name__}'
-                raise AttributeError(msg)
+        # Autogenerate fields from instance attributes
+        for attribute_name in dir(self):
+            if '__' in attribute_name:
+                continue
 
-            if not issubclass(attribute.__class__, TableField):
-                msg = f'Field {type(self).__name__}.{attribute_name} is not TableField issubclass: {attribute}'
-                raise AttributeError(msg)
+            attribute = getattr(self, attribute_name)
+            if issubclass(type(attribute), TableField):
+                generated_fields[attribute_name] = attribute
 
-            yield (attribute_name, attribute)
+        # Generation FunctionField
+        for attribute_name in dir(self):
+            if '__' in attribute_name:
+                continue
+
+            attribute = getattr(self, attribute_name)
+            if getattr(attribute, '__function_field__', False):
+                field = FunctionField(fn=attribute, **attribute.__kwargs__)
+                field.read_only = True
+                generated_fields[attribute_name] = field
+
+        return generated_fields
 
     def get_field(self, field_slug) -> TableField | None:
         return self.get_fields().get(field_slug)
 
     def get_fields(self) -> Dict[str, TableField]:
-        if self._fields_list is None:
-            self._fields_list = {i[0]: i[1] for i in self._generate_fields()}
-
-        return self._fields_list
+        return self._generated_fields
 
     def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> FieldsSchemaData:
         fields_schema = FieldsSchemaData(
             list_display=self.list_display,
         )
-        fields_schema.fields = {
-            field_slug: field.generate_schema(user, field_slug, language_manager)
-            for field_slug, field in self.get_fields().items()
-        }
+
+        for field_slug, field in self.get_fields().items():
+            field_schema: FieldSchemaData = field.generate_schema(user, field_slug, language_manager)
+            fields_schema.fields[field_slug] = field_schema.to_dict(keep_none=False)
+
         return fields_schema
 
     async def serialize(self, line_data: dict, extra: dict) -> dict:

@@ -19,13 +19,32 @@ from example.sections.users import UserAdmin
 from example.sqlite import async_sessionmaker_, lifespan
 
 
+class ExtraFormatter(logging.Formatter):
+    _standard_attrs = {
+        'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
+        'filename', 'module', 'exc_info', 'exc_text', 'stack_info',
+        'lineno', 'funcName', 'created', 'msecs', 'relativeCreated',
+        'thread', 'threadName', 'processName', 'process',
+        'message', 'asctime'
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        extra = {
+            k: v for k, v in record.__dict__.items()
+            if k not in self._standard_attrs
+        }
+
+        record.extra = extra
+        return super().format(record)
+
+
 class LogConfig(BaseModel):
     version: int = 1
     disable_existing_loggers: bool = False
     formatters: dict = {
         "default": {
-            "()": "uvicorn.logging.DefaultFormatter",
-            "fmt": "%(levelprefix)s %(asctime)s: %(message)s",
+            "()": ExtraFormatter,
+            "fmt": "%(levelname)s %(asctime)s: %(message)s | extra: %(extra)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     }

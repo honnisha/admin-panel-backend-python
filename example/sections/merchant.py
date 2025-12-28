@@ -1,4 +1,4 @@
-from admin_panel import sqlalchemy
+from admin_panel import schema, sqlalchemy
 from admin_panel.translations import TranslateText as _
 from example.sections.models import Merchant
 
@@ -21,12 +21,22 @@ class MerchantAdmin(sqlalchemy.SQLAlchemyAdmin):
         model=Merchant,
         readonly_fields=[
             'created_at',
-        ]
+        ],
+        fields=[
+            'id',
+            'user_id',
+            'title',
+            'created_at',
+            'terminals',
+        ],
+        title=schema.StringField(ckeditor=True),
     )
     table_filters = sqlalchemy.SQLAlchemyFieldsSchema(
         model=Merchant,
         fields=[
             'id',
             'user_id',
-        ]
+            'created_at',
+        ],
+        created_at=schema.DateTimeField(range=True),
     )

@@ -37,6 +37,11 @@ class FieldSchemaData(DataclassBase):
     preview_max_height: int | None = None
     preview_max_width: int | None = None
 
+    # StringField
+    multilined: bool | None = None
+    ckeditor: bool | None = None
+    tinymce: bool | None = None
+
     # ArrayField
     array_type: str | None = None
 
@@ -51,11 +56,13 @@ class FieldSchemaData(DataclassBase):
 
     # DateTimeField
     range: bool | None = None
+    include_date: bool | None = None
+    include_time: bool | None = None
 
 
 @dataclass
 class FieldsSchemaData(DataclassBase):
-    fields: Dict[str, FieldSchemaData] = Field(default_factory=dict)
+    fields: Dict[str, dict] = Field(default_factory=dict)
     list_display: List[str] = Field(default_factory=list)
 
 

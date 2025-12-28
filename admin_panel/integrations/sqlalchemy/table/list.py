@@ -2,6 +2,7 @@ import logging
 
 from admin_panel import auth, schema
 from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSchema
 from admin_panel.integrations.sqlalchemy.table.base import record_to_dict
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
@@ -62,37 +63,14 @@ class SQLAlchemyAdminListMixin:
         return stmt
 
     def apply_filters(self, stmt, list_data: schema.ListData):
-        # pylint: disable=import-outside-toplevel
-        from sqlalchemy import String, cast
-        from sqlalchemy.orm import InstrumentedAttribute
-
         if not self.table_filters or not list_data.filters:
             return stmt
 
-        # filters
-        for field_slug, value in list_data.filters.items():
-            available_filters = list(self.table_filters.get_fields().keys())
-            if field_slug not in available_filters:
-                msg = f'{type(self).__name__} filter "{field_slug}" not found inside table_filters fields: {available_filters}'
-                raise AttributeError(msg)
+        if not issubclass(type(self.table_filters), SQLAlchemyFieldsSchema):
+            msg = f'{type(self).__name__}.table_filters {type(self.table_filters)} must be SQLAlchemyFieldsSchema subclass'
+            raise AttributeError(msg)
 
-            column = getattr(self.model, field_slug, None)
-            if not isinstance(column, InstrumentedAttribute):
-                msg = f'{type(self).__name__} filter "{field_slug}" not found as field inside model {self.model}'
-                raise AttributeError(msg)
-
-            if isinstance(value, list):
-                stmt = stmt.where(column.in_(value))
-
-            elif isinstance(value, str):
-                stmt = stmt.where(
-                    cast(column, String).like(f"%{value}%")
-                )
-
-            else:
-                stmt = stmt.where(column == value)
-
-        return stmt
+        return self.table_filters.apply_filters(stmt, list_data.filters)
 
     def apply_pagination(self, stmt, list_data: schema.ListData):
         page = max(1, list_data.page or 1)
@@ -111,25 +89,47 @@ class SQLAlchemyAdminListMixin:
         language_manager: LanguageManager,
     ) -> schema.TableListResult:
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy import func, select
-        from sqlalchemy.orm import selectinload
+        from sqlalchemy import exc, func, select
 
-        stmt = self.get_queryset()
-        stmt = self.apply_filters(stmt, list_data)
-        stmt = self.apply_search(stmt, list_data)
-        stmt = self.apply_ordering(stmt, list_data)
+        try:
+            stmt = self.get_queryset()
+            stmt = self.apply_filters(stmt, list_data)
+            stmt = self.apply_search(stmt, list_data)
+            stmt = self.apply_ordering(stmt, list_data)
 
-        count_stmt = select(func.count()).select_from(stmt.subquery())
-        stmt = self.apply_pagination(stmt, list_data)
+            count_stmt = select(func.count()).select_from(stmt.subquery())
+            stmt = self.apply_pagination(stmt, list_data)
+        
+        except Exception as e:
+            logger.exception(
+                'SQLAlchemy %s list filters error: %s',
+                type(self).__name__, e,
+                extra={
+                    'list_data': list_data,
+                }
+            )
+            raise AdminAPIException(APIError(message=_('filters_exception'), code='filters_exception'), status_code=500) from e
 
-        # Count
+        data = []
+
         try:
             async with self.db_async_session() as session:
                 total_count = await session.scalar(count_stmt)
+                records = (await session.execute(stmt)).scalars().all()
+                for record in records:
+                    line = await self.table_schema.serialize(
+                        record_to_dict(record),
+                        extra={"record": record, "user": user},
+                    )
+                    data.append(line)
 
         except ConnectionRefusedError as e:
             logger.exception(
-                'SQLAlchemy %s get_list db error: %s', type(self).__name__, e,
+                'SQLAlchemy %s get_list db error: %s',
+                type(self).__name__, e,
+                extra={
+                    'list_data': list_data,
+                }
             )
             msg = _('connection_refused_error') % {'error': str(e)}
             raise AdminAPIException(
@@ -137,22 +137,30 @@ class SQLAlchemyAdminListMixin:
                 status_code=500,
             ) from e
 
-        total_count = int(total_count or 0)
+        except (exc.IntegrityError, exc.StatementError) as e:
+            logger.exception(
+                'SQLAlchemy %s get_list db error: %s',
+                type(self).__name__, e,
+                extra={
+                    'list_data': list_data,
+                }
+            )
+            orig = e.orig
+            message = orig.args[0] if orig.args else type(orig).__name__
+            raise AdminAPIException(
+                APIError(message=message, code='db_exception'), status_code=500,
+            ) from e
 
-        # Eager-load related fields
-        for _slug, field in self.table_schema.get_fields().items():
-            # pylint: disable=protected-access
-            if field._type == "related" and field.rel_name:
-                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
+        except Exception as e:
+            logger.exception(
+                'SQLAlchemy %s get_list db error: %s',
+                type(self).__name__, e,
+                extra={
+                    'list_data': list_data,
+                }
+            )
+            raise AdminAPIException(
+                APIError(message=_('db_error_list'), code='db_error_list'), status_code=500,
+            ) from e
 
-        data = []
-        async with self.db_async_session() as session:
-            records = (await session.execute(stmt)).scalars().all()
-            for record in records:
-                line = await self.table_schema.serialize(
-                    record_to_dict(record),
-                    extra={"record": record, "user": user},
-                )
-                data.append(line)
-
-        return schema.TableListResult(data=data, total_count=total_count)
+        return schema.TableListResult(data=data, total_count=int(total_count or 0))

@@ -1,3 +1,4 @@
+import json
 import re
 
 from pydantic import TypeAdapter
@@ -13,6 +14,13 @@ class DataclassBase:
     def model_dump(self, *args, **kwargs) -> dict:
         adapter = TypeAdapter(type(self))
         return adapter.dump_python(self, *args, **kwargs)
+
+    def to_dict(self, keep_none=True) -> dict:
+        data = self.model_dump()
+        return {
+            k: v for k, v in data.items()
+            if v is not None and not keep_none
+        }
 
 
 def humanize_field_name(name: str) -> str:

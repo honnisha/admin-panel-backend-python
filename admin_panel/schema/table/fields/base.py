@@ -6,7 +6,7 @@ from pydantic.dataclasses import dataclass
 from admin_panel.exceptions import FieldError
 from admin_panel.schema.category import FieldSchemaData
 from admin_panel.translations import LanguageManager, TranslateText
-from admin_panel.utils import DeserializeAction
+from admin_panel.utils import DeserializeAction, humanize_field_name
 
 
 @dataclass
@@ -19,7 +19,7 @@ class TableField(abc.ABC, FieldSchemaData):
     def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = FieldSchemaData(
             type=self._type,
-            label=language_manager.get_text(self.label) or field_slug,
+            label=language_manager.get_text(self.label) or humanize_field_name(field_slug),
             help_text=language_manager.get_text(self.help_text),
             header=self.header,
             read_only=self.read_only,
@@ -80,6 +80,10 @@ class IntegerField(TableField):
 class StringField(TableField):
     _type = 'string'
 
+    multilined: bool | None = None
+    ckeditor: bool | None = None
+    tinymce: bool | None = None
+
     min_length: int | None = None
     max_length: int | None = None
 
@@ -88,7 +92,10 @@ class StringField(TableField):
     def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
+        schema.multilined = self.multilined
         schema.choices = self.choices
+        schema.ckeditor = self.ckeditor
+        schema.tinymce = self.tinymce
 
         if self.min_length is not None:
             schema.min_length = self.min_length
@@ -110,11 +117,15 @@ class DateTimeField(TableField):
 
     format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
     range: bool | None = None
+    include_date: bool | None = True
+    include_time: bool | None = True
 
     def generate_schema(self, user, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
 
         schema.range = self.range
+        schema.include_date = self.include_date
+        schema.include_time = self.include_time
 
         return schema
 

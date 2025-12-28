@@ -33,5 +33,6 @@ class TerminalAdmin(sqlalchemy.SQLAlchemyAdmin):
         model=Terminal,
         fields=[
             'id',
+            'created_at',
         ]
     )
