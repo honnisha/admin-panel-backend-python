@@ -2,9 +2,11 @@ import datetime
 from typing import Any
 
 from admin_panel import schema
+from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.integrations.sqlalchemy.fields import SQLAlchemyRelatedField
 from admin_panel.schema.table.fields.base import DateTimeField
-from admin_panel.utils import humanize_field_name
+from admin_panel.translations import TranslateText as _
+from admin_panel.utils import DeserializeAction, humanize_field_name
 
 
 class SQLAlchemyFieldsSchema(schema.FieldsSchema):
@@ -27,6 +29,9 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
         from sqlalchemy.sql.schema import Column
 
         mapper = inspect(self.model).mapper
+
+        for field_slug, field in self.generate_related_fields():
+            generated_fields[field_slug] = field
 
         for attr in mapper.column_attrs:
             col: Column = attr.columns[0]
@@ -64,18 +69,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
             # Foreign key column
             if col.foreign_keys:
-                field_class = SQLAlchemyRelatedField
-
-                # Find relationship that uses this FK column
-                rel_name = None
-                for rel in mapper.relationships:
-                    if col in rel.local_columns:
-                        rel_name = rel.key
-                        break
-
-                if rel_name:
-                    field_data["label"] = info.get('label', humanize_field_name(rel_name))
-                    field_data["rel_name"] = rel_name
+                continue
 
             elif isinstance(col_type, (sqltypes.BigInteger, sqltypes.Integer)) or py_t is int:
                 field_class = schema.IntegerField
@@ -120,11 +114,17 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             else:
                 generated_fields[field_slug] = schema_field
 
+        return generated_fields
+
+    def generate_related_fields(self):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import inspect
+
+        mapper = inspect(self.model).mapper
+
+        # relationship-поля
         for rel in mapper.relationships:
             field_slug = rel.key
-
-            if field_slug in generated_fields:
-                continue
 
             field_data = {}
 
@@ -132,16 +132,55 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             field_data["label"] = info.get('label', humanize_field_name(field_slug))
             field_data["help_text"] = info.get('help_text')
 
-            field_data["read_only"] = False
-            field_data["required"] = False
+            field_data["read_only"] = rel.viewonly
+            field_data["required"] = (
+                not rel.uselist
+                and all(not col.nullable for col in rel.local_columns)
+            )
 
+            field_data["rel_name"] = rel.key
             field_data["many"] = rel.uselist
+            field_data["target_model"] = rel.mapper.class_
 
-            field_class = SQLAlchemyRelatedField
+            yield field_slug, SQLAlchemyRelatedField(**field_data)
 
-            generated_fields[field_slug] = field_class(**field_data)
+        # FK-поля
+        for attr in mapper.column_attrs:
+            col = attr.columns[0]
 
-        return generated_fields
+            if not col.foreign_keys:
+                continue
+
+            rel_obj = None
+            for rel in mapper.relationships:
+                if col in rel.local_columns:
+                    rel_obj = rel
+                    break
+
+            if not rel_obj:
+                continue
+
+            field_slug = attr.key
+
+            field_data = {}
+
+            info = col.info or {}
+            field_data["label"] = info.get('label', humanize_field_name(rel_obj.key))
+            field_data["help_text"] = info.get('help_text')
+
+            field_data["read_only"] = False
+            field_data["required"] = (
+                not col.nullable
+                and col.default is None
+                and col.server_default is None
+                and not col.primary_key
+            )
+
+            field_data["rel_name"] = rel_obj.key
+            field_data["many"] = rel_obj.uselist
+            field_data["target_model"] = rel_obj.mapper.class_
+
+            yield field_slug, SQLAlchemyRelatedField(**field_data)
 
     def apply_filters(self, stmt, filters: dict):
         # pylint: disable=import-outside-toplevel
@@ -194,3 +233,67 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             line_data[field_slug] = line_data.get(field_slug)
 
         return await super().serialize(line_data, extra, *args, **kwargs)
+
+    def validate_incoming_data(self, data):
+        '''
+        Validate that all fields keys has their schema
+
+        for create, update
+        '''
+        for field_slug in data.keys():
+            field = self.get_field(field_slug)
+            if not field:
+                available = list(self.get_fields().keys())
+                msg = _('field_not_found_in_schema') % {'field_slug': field_slug, 'available': available}
+                raise AdminAPIException(
+                    APIError(message=msg, code='field_not_found_in_schema '),
+                    status_code=400,
+                )
+
+    async def create(self, user, data, session):
+        self.validate_incoming_data(data)
+
+        record = self.model()
+
+        deserialized_data = await self.deserialize(
+            data,
+            DeserializeAction.CREATE,
+            extra={'model': self.model},
+        )
+
+        for field_slug, value in deserialized_data.items():
+            field = self.get_field(field_slug)
+
+            if isinstance(field, SQLAlchemyRelatedField):
+                with session.no_autoflush:
+                    await field.update_related(record, field_slug, value, session)
+                continue
+
+            setattr(record, field_slug, value)
+
+        session.add(record)
+        await session.commit()
+        await session.refresh(record)
+        return record
+
+    async def update(self, record, user, data, session):
+        self.validate_incoming_data(data)
+
+        deserialized_data = await self.deserialize(
+            data,
+            DeserializeAction.UPDATE,
+            extra={'model': self.model},
+        )
+
+        for field_slug, value in deserialized_data.items():
+            field = self.get_field(field_slug)
+
+            if isinstance(field, SQLAlchemyRelatedField):
+                with session.no_autoflush:
+                    await field.update_related(record, field_slug, value, session)
+                continue
+
+            setattr(record, field_slug, value)
+
+        await session.commit()
+        return record

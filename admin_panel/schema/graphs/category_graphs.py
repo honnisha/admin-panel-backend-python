@@ -47,4 +47,4 @@ class CategoryGraphs(Category):
         return schema
 
     async def get_data(self, data: GraphData, user) -> GraphsDataResult:
-        raise NotImplementedError()
+        raise NotImplementedError('get_data is not implemented')

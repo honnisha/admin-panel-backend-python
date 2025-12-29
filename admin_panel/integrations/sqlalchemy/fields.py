@@ -13,9 +13,10 @@ from admin_panel.utils import DeserializeAction
 @dataclass
 class SQLAlchemyRelatedField(TableField):
     _type: str = 'related'
-    queryset: Any = None  # optional custom query builder
+
     many: bool = False
     rel_name: str | None = None
+    target_model: Any | None = None
 
     def generate_schema(self, user: UserABC, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
@@ -54,19 +55,6 @@ class SQLAlchemyRelatedField(TableField):
         msg = f'Cannot resolve target model for FK "{field_slug}"'
         raise Exception(msg)
 
-    def get_queryset(self, model, data, session):
-        # Allow overriding query logic
-        if self.queryset is not None:
-            return self.queryset(model, data, session)
-
-        if not model:
-            msg = 'Related field must provide queryset in case non model views!'
-            raise AttributeError(msg)
-
-        target_model = self._get_target_model(model, data.field_slug)
-        # Return target model + session; actual select is built in autocomplete
-        return target_model
-
     async def autocomplete(self, model, data, user, *, extra: dict | None = None) -> List[Record]:
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import select
@@ -80,7 +68,7 @@ class SQLAlchemyRelatedField(TableField):
 
         results = []
 
-        target_model = self.get_queryset(model, data, session)
+        target_model = self._get_target_model(model, data.field_slug)
         limit = min(150, data.limit)
         stmt = select(target_model).limit(limit)
 
@@ -127,4 +115,46 @@ class SQLAlchemyRelatedField(TableField):
         if isinstance(value, dict) and 'key' in value:
             return value['key']
 
-        raise NotImplementedError()
+        if isinstance(value, int):
+            return value
+
+        raise NotImplementedError(f'Value {value} is not supported for related field')
+
+    async def update_related(self, record, field_slug, value, session):
+        """
+        Обновление SQLAlchemy relationship.
+
+        Предположения:
+        - self.rel_name всегда имя relationship
+        - self.target_model задан
+        - self.many отражает тип связи
+        """
+
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import select
+
+        if value is None:
+            return
+
+        # При CREATE объект должен быть в session до работы с relationship
+        if record not in session:
+            session.add(record)
+
+        rel_attr = self.rel_name
+
+        if self.many:
+            ids = value if isinstance(value, (list, tuple)) else [value]
+
+            if not ids:
+                setattr(record, rel_attr, [])
+                return
+
+            result = await session.scalars(
+                select(self.target_model).where(self.target_model.id.in_(ids))
+            )
+
+            getattr(record, rel_attr).extend(list(result))
+            return
+
+        obj = await session.get(self.target_model, value)
+        setattr(record, rel_attr, obj)

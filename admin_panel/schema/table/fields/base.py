@@ -39,7 +39,7 @@ class TableField(abc.ABC, FieldSchemaData):
         return value
 
     async def autocomplete(self, model, data, user):
-        raise NotImplementedError()
+        raise NotImplementedError('autocomplete is not implemented')
 
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-positional-arguments

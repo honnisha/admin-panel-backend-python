@@ -26,7 +26,7 @@ class AuthResult(BaseModel):
 
 class AdminAuthentication(abc.ABC):
     async def login(self, data: AuthData) -> AuthResult:
-        raise NotImplementedError()
+        raise NotImplementedError('Login is not implemented')
 
     async def authenticate(self, headers: dict) -> UserABC:
-        raise NotImplementedError()
+        raise NotImplementedError('authenticate is not implemented')

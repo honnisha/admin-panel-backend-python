@@ -30,8 +30,8 @@ class MerchantAdmin(sqlalchemy.SQLAlchemyAdmin):
             'created_at',
             'terminals',
         ],
-        title=schema.StringField(multilined=True),
-        description=schema.StringField(tinymce=True),
+        title=schema.StringField(multilined=True, required=True),
+        description=schema.StringField(tinymce=True, required=True),
     )
     table_filters = sqlalchemy.SQLAlchemyFieldsSchema(
         model=Merchant,

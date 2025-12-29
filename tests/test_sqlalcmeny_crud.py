@@ -1,6 +1,8 @@
 from unittest import mock
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from admin_panel import auth, schema, sqlalchemy
 from example.main import CustomLanguageManager
@@ -167,20 +169,23 @@ async def test_update_related(sqlite_sessionmaker):
             ],
         ),
     )
-
     language_manager = CustomLanguageManager('ru')
     user = auth.UserABC(username="test")
 
     currency = await CurrencyFactory(title='RUB')
-    terminal = await TerminalFactory(
+    terminal_1 = await TerminalFactory(
+        merchant=await MerchantFactory(title="Test merch"),
+        currency=await CurrencyFactory(title='USD'),
+    )
+    terminal_2 = await TerminalFactory(
         merchant=await MerchantFactory(title="Test merch"),
         currency=await CurrencyFactory(title='USD'),
     )
 
     update_data = {
         'terminals': [
-            {'key': 1, 'title': '<Terminal #1 title=Arroyo-Hanson>'},
-            {'key': 3, 'title': '<Terminal #3 title=Peterson, Mendoza and Scott>'},
+            {'key': terminal_1.id, 'title': '<Terminal #1 title=Arroyo-Hanson>'},
+            {'key': terminal_2.id, 'title': '<Terminal #3 title=Peterson, Mendoza and Scott>'},
         ],
     }
     update_result = await category.update(
@@ -190,6 +195,17 @@ async def test_update_related(sqlite_sessionmaker):
         language_manager=language_manager,
     )
     assert update_result == schema.UpdateResult(pk=currency.id)
+
+    async with sqlite_sessionmaker() as session:
+        result = await session.execute(
+            select(Currency)
+            .options(selectinload(Currency.terminals))
+            .where(Currency.id == currency.id)
+        )
+        updated = result.scalar_one()
+
+    terminal_ids = sorted(t.id for t in updated.terminals)
+    assert terminal_ids == [terminal_1.id, terminal_2.id]
 
 
 @pytest.mark.asyncio
