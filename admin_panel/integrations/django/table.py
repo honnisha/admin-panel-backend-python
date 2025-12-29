@@ -1,5 +1,3 @@
-import logging
-
 from admin_panel.auth import UserABC
 from admin_panel.schema.table import CategoryTable
 from admin_panel.schema.table import fields as schema_fields
@@ -8,12 +6,12 @@ from admin_panel.schema.table.fields.function_field import FunctionField
 from admin_panel.schema.table.fields_schema import FieldsSchema
 from admin_panel.schema.table.table_models import CreateResult, ListData, RetrieveResult, TableListResult, UpdateResult
 from admin_panel.translations import LanguageManager
-from admin_panel.utils import DeserializeAction
+from admin_panel.utils import DeserializeAction, get_logger
 
 from .autocomplete import DjangoAdminAutocomplete
 from .fields import DjangoRelatedField
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 def fix_str(value):

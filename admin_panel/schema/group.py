@@ -1,5 +1,4 @@
 import abc
-import logging
 from typing import Dict, List
 
 from pydantic.dataclasses import dataclass
@@ -7,9 +6,9 @@ from pydantic.dataclasses import dataclass
 from admin_panel.auth import UserABC
 from admin_panel.schema.category import Category, CategorySchemaData
 from admin_panel.translations import LanguageManager, TranslateText
-from admin_panel.utils import DataclassBase
+from admin_panel.utils import DataclassBase, get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 @dataclass

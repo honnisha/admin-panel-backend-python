@@ -26,10 +26,12 @@ class MerchantAdmin(sqlalchemy.SQLAlchemyAdmin):
             'id',
             'user_id',
             'title',
+            'description',
             'created_at',
             'terminals',
         ],
-        title=schema.StringField(ckeditor=True),
+        title=schema.StringField(multilined=True),
+        description=schema.StringField(tinymce=True),
     )
     table_filters = sqlalchemy.SQLAlchemyFieldsSchema(
         model=Merchant,

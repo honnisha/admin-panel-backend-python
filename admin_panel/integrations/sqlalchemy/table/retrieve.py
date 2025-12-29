@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 from admin_panel import auth, schema
@@ -6,8 +5,9 @@ from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.integrations.sqlalchemy.table.base import record_to_dict
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
+from admin_panel.utils import get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 class SQLAlchemyAdminRetrieveMixin:

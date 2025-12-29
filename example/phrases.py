@@ -73,6 +73,7 @@ LANGUAGES_PHRASES = {
         'currencies': 'Валюты',
         'whitelist_ips': 'Белый список IP',
         'users': 'Пользователи',
+        'field_not_fuld_in_schema': 'Поле "{field_slug}" не найдено среди доступных: {available}',
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
@@ -102,5 +103,6 @@ LANGUAGES_PHRASES = {
         'currencies': 'Currencies',
         'whitelist_ips': 'Whitelist IPs',
         'users': 'Users',
+        'field_not_fuld_in_schema': 'The field "{field_slug}" was not found among the available fields: {available}',
     },
 }

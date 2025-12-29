@@ -81,7 +81,8 @@ class SQLAlchemyRelatedField(TableField):
         results = []
 
         target_model = self.get_queryset(model, data, session)
-        stmt = select(target_model).limit(data.limit)
+        limit = min(150, data.limit)
+        stmt = select(target_model).limit(limit)
 
         # Keep behaviour similar to Django version: search by id if search_string exists
         if data.search_string:
@@ -120,7 +121,10 @@ class SQLAlchemyRelatedField(TableField):
         if not value:
             return None
 
+        if isinstance(value, list):
+            return [i['key'] for i in value]
+
         if isinstance(value, dict) and 'key' in value:
             return value['key']
 
-        return value
+        raise NotImplementedError()

@@ -1,9 +1,10 @@
 from unittest import mock
+
 import pytest
 
 from admin_panel import auth, schema, sqlalchemy
 from example.main import CustomLanguageManager
-from example.sections.models import CurrencyFactory, MerchantFactory, Terminal, TerminalFactory
+from example.sections.models import Currency, CurrencyFactory, MerchantFactory, Terminal, TerminalFactory
 from tests.test_sqlalcmeny_schema import FIELDS
 
 
@@ -151,6 +152,44 @@ async def test_update(sqlite_sessionmaker):
         language_manager=language_manager,
     )
     assert update_result == schema.UpdateResult(pk=terminal.id)
+
+
+@pytest.mark.asyncio
+async def test_update_related(sqlite_sessionmaker):
+    category = sqlalchemy.SQLAlchemyAdmin(
+        model=Currency,
+        db_async_session=sqlite_sessionmaker,
+        table_schema=sqlalchemy.SQLAlchemyFieldsSchema(
+            model=Currency,
+            fields=[
+                'id',
+                'terminals',
+            ],
+        ),
+    )
+
+    language_manager = CustomLanguageManager('ru')
+    user = auth.UserABC(username="test")
+
+    currency = await CurrencyFactory(title='RUB')
+    terminal = await TerminalFactory(
+        merchant=await MerchantFactory(title="Test merch"),
+        currency=await CurrencyFactory(title='USD'),
+    )
+
+    update_data = {
+        'terminals': [
+            {'key': 1, 'title': '<Terminal #1 title=Arroyo-Hanson>'},
+            {'key': 3, 'title': '<Terminal #3 title=Peterson, Mendoza and Scott>'},
+        ],
+    }
+    update_result = await category.update(
+        pk=currency.id,
+        data=update_data,
+        user=user,
+        language_manager=language_manager,
+    )
+    assert update_result == schema.UpdateResult(pk=currency.id)
 
 
 @pytest.mark.asyncio

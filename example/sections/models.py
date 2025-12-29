@@ -87,6 +87,7 @@ class Merchant(BaseIDModel):
 
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)  # pylint: disable=not-callable
     terminals: Mapped[list["Terminal"]] = relationship(back_populates="merchant")
 
@@ -101,7 +102,8 @@ class MerchantFactory(SQLAlchemyFactoryBase):
         sqlalchemy_session_persistence = "commit"
 
     user_id = factory.Faker("random_int", min=1, max=10_000)
-    title = factory.Faker("company")
+    title = factory.Faker("word")
+    description = factory.Faker("sentence", nb_words=6)
     created_at = factory.LazyFunction(datetime.utcnow)
 
 
@@ -148,6 +150,9 @@ class Terminal(BaseIDModel):
     )  # DateTime used once
 
     # whitelist_ips: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+
+    def __repr__(self):
+        return f"<Terminal #{self.id} title={self.title}>"
 
 
 class TerminalFactory(SQLAlchemyFactoryBase):

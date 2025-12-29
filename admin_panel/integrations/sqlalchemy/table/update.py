@@ -1,17 +1,16 @@
-import logging
 from typing import Any
 
 from admin_panel import auth, schema
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
-from admin_panel.utils import DeserializeAction
+from admin_panel.utils import DeserializeAction, get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 class SQLAlchemyAdminUpdate:
-    # pylint: disable=too-many-local-variables
+    # pylint: disable=too-many-locals
     async def update(
             self,
             pk: Any,
@@ -43,22 +42,31 @@ class SQLAlchemyAdminUpdate:
                 status_code=400,
             )
 
+        for field_slug in data.keys():
+            field = self.table_schema.get_field(field_slug)
+            if not field:
+                available = list(self.table_schema.get_fields().keys())
+                msg = _('field_not_fuld_in_schema') % {'field_slug': field_slug, 'available': available}
+                raise AdminAPIException(
+                    APIError(message=msg, code='field_not_fuld_in_schema'),
+                    status_code=400,
+                )
+
         deserialized_data = await self.table_schema.deserialize(
             data,
             action=DeserializeAction.UPDATE,
             extra={"record": record, "model": self.model, "user": user},
         )
 
-        for k, v in deserialized_data.items():
-            setattr(record, k, v)
-
         try:
+            for k, v in deserialized_data.items():
+                setattr(record, k, v)
             async with self.db_async_session() as session:
                 await session.commit()
 
         except ConnectionRefusedError as e:
             logger.exception(
-                'SQLAlchemy %s update db error: %s', type(self).__name__, e,
+                'SQLAlchemy %s update db connection error: %s', type(self).__name__, e,
             )
             msg = _('connection_refused_error') % {'error': str(e)}
             raise AdminAPIException(
@@ -68,7 +76,13 @@ class SQLAlchemyAdminUpdate:
 
         except Exception as e:
             logger.exception(
-                'SQLAlchemy %s update db error: %s', type(self).__name__, e,
+                'SQLAlchemy %s update db error: %s',
+                type(self).__name__,
+                e,
+                extra={
+                    'data': data,
+                    'deserialized_data': deserialized_data,
+                }
             )
             raise AdminAPIException(
                 APIError(message=_('db_error_update'), code='db_error_update'), status_code=500,

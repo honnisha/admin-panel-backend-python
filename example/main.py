@@ -1,8 +1,10 @@
 import asyncio
+import logging
 import logging.config
 
+import structlog
 from fastapi import FastAPI
-from pydantic import BaseModel
+from structlog.dev import RichTracebackFormatter
 
 from admin_panel import schema
 from admin_panel.auth import AdminAuthentication, AuthData, AuthResult, UserABC, UserResult
@@ -18,50 +20,28 @@ from example.sections.terminal import TerminalAdmin
 from example.sections.users import UserAdmin
 from example.sqlite import async_sessionmaker_, lifespan
 
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.set_exc_info,
+        structlog.stdlib.ExtraAdder(),
+        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=False),
+        structlog.dev.ConsoleRenderer(colors=True, sort_keys=True)
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.NOTSET),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=False
+)
 
-class ExtraFormatter(logging.Formatter):
-    _standard_attrs = {
-        'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
-        'filename', 'module', 'exc_info', 'exc_text', 'stack_info',
-        'lineno', 'funcName', 'created', 'msecs', 'relativeCreated',
-        'thread', 'threadName', 'processName', 'process',
-        'message', 'asctime'
-    }
-
-    def format(self, record: logging.LogRecord) -> str:
-        extra = {
-            k: v for k, v in record.__dict__.items()
-            if k not in self._standard_attrs
-        }
-
-        record.extra = extra
-        return super().format(record)
-
-
-class LogConfig(BaseModel):
-    version: int = 1
-    disable_existing_loggers: bool = False
-    formatters: dict = {
-        "default": {
-            "()": ExtraFormatter,
-            "fmt": "%(levelname)s %(asctime)s: %(message)s | extra: %(extra)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-    }
-    handlers: dict = {
-        "default": {
-            "formatter": "default",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
-        },
-
-    }
-    loggers: dict = {
-        "admin_panel": {"handlers": ["default"], "level": "INFO"},
-    }
-
-
-logging.config.dictConfig(LogConfig().model_dump())
+cr = structlog.dev.ConsoleRenderer.get_active()
+cr.exception_formatter = RichTracebackFormatter(
+    max_frames=1,
+    show_locals=False,
+    suppress=["uvicorn", "fastapi", "starlette"],
+)
 
 
 class CustomLanguageManager(LanguageManager):

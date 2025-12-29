@@ -1,10 +1,9 @@
-import logging
-
 from admin_panel.auth import AdminAuthentication, AuthData, AuthResult, UserABC, UserResult
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.translations import TranslateText as _
+from admin_panel.utils import get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 class SQLAlchemyJWTAdminAuthentication(AdminAuthentication):

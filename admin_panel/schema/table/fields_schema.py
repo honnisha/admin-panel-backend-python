@@ -1,7 +1,6 @@
 import asyncio
 from typing import Any, ClassVar, Dict, List
 
-from pydantic import Field
 from pydantic_core import core_schema
 
 from admin_panel.auth import UserABC
@@ -15,6 +14,7 @@ from admin_panel.utils import DeserializeAction
 NOT_FUND_EXCEPTION = '''Field slug "{field_slug}" not found inside generated fields inside {class_name}
 Available options: {available_fields}
 '''
+
 
 class DeserializeError(Exception):
     pass
@@ -33,13 +33,16 @@ class FieldsSchema:
     # Generated fields
     _generated_fields: dict = None
 
-    def __init__(self, *args, list_display=None, readonly_fields=None, fields=None, **kwargs):
+    def __init__(self, *args, table_schema=None, list_display=None, readonly_fields=None, fields=None, **kwargs):
         if fields:
             self.fields = fields
 
         if self.fields and not isinstance(self.fields, list):
             msg = f'{type(self).__name__}.fields must be a list instance; found: {self.fields}'
             raise AttributeError(msg)
+
+        if table_schema:
+            self.table_schema = table_schema
 
         if list_display:
             self.list_display = list_display

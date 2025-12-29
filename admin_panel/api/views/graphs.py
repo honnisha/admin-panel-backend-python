@@ -1,17 +1,16 @@
-import logging
-
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from admin_panel.exceptions import AdminAPIException
 from admin_panel.api.utils import get_category
+from admin_panel.exceptions import AdminAPIException
 from admin_panel.schema.admin_schema import AdminSchema
 from admin_panel.schema.graphs.category_graphs import CategoryGraphs, GraphData, GraphsDataResult
 from admin_panel.translations import LanguageManager
+from admin_panel.utils import get_logger
 
 router = APIRouter(prefix="/graph", tags=["Category - Graph"])
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 @router.post(path='/{group}/{category}/')

@@ -1,4 +1,3 @@
-
 # Example
 
 ``` shell
@@ -14,21 +13,4 @@ Docs:
 Tests:
 ``` shell
 uv run pytest
-```
-
-``` shell
-from auth_models.db.models import User
-from app.database import auth_db
-
-async with auth_db.async_session() as session:
-    user = User(
-        username='admin',
-        password='admin',
-        email="admin@admin.com",
-        is_admin=True,
-    )
-    session.add(user)
-    await session.commit()
-    await session.refresh(user)
-    user
 ```

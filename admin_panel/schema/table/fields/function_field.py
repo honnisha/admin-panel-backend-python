@@ -1,14 +1,14 @@
 import asyncio
 import functools
-import logging
 from typing import Any
 
 from pydantic.dataclasses import dataclass
 
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.schema.table.fields.base import TableField
+from admin_panel.utils import get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 def function_field(**kwargs):

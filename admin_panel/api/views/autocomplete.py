@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -8,10 +6,11 @@ from admin_panel.exceptions import AdminAPIException
 from admin_panel.schema.admin_schema import AdminSchema
 from admin_panel.schema.table.table_models import AutocompleteData, AutocompleteResult
 from admin_panel.translations import LanguageManager
+from admin_panel.utils import get_logger
 
 router = APIRouter(prefix="/autocomplete", tags=["Autocomplete"])
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 @router.post(path='/{group}/{category}/')

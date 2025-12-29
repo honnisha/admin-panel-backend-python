@@ -1,5 +1,4 @@
-import logging
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -11,10 +10,11 @@ from admin_panel.schema.table.admin_action import ActionData, ActionResult
 from admin_panel.schema.table.category_table import CategoryTable
 from admin_panel.schema.table.table_models import CreateResult, ListData, RetrieveResult, TableListResult, UpdateResult
 from admin_panel.translations import LanguageManager
+from admin_panel.utils import get_logger
 
 router = APIRouter(prefix="/table", tags=["Category - Table"])
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 # pylint: disable=too-many-arguments

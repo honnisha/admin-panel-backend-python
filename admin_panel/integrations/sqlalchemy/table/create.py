@@ -1,13 +1,11 @@
-import logging
-
 from admin_panel import schema
 from admin_panel.auth import UserABC
 from admin_panel.exceptions import APIError, AdminAPIException
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
-from admin_panel.utils import DeserializeAction
+from admin_panel.utils import DeserializeAction, get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 class SQLAlchemyAdminCreate:
@@ -31,6 +29,7 @@ class SQLAlchemyAdminCreate:
                 session.add(record)
                 await session.commit()
                 await session.refresh(record)
+            pk_value = getattr(record, self.pk_name, None)
 
         except ConnectionRefusedError as e:
             logger.exception(
@@ -54,11 +53,15 @@ class SQLAlchemyAdminCreate:
 
         except Exception as e:
             logger.exception(
-                'SQLAlchemy %s create db error: %s', type(self).__name__, e,
+                'SQLAlchemy %s create db error: %s', type(self).__name__,
+                e,
+                extra={
+                    'data': data,
+                    'deserialized_data': deserialized_data,
+                }
             )
             raise AdminAPIException(
                 APIError(message=_('db_error_create'), code='db_error_create'), status_code=500,
             ) from e
 
-        pk_value = getattr(record, self.pk_name, None)
         return schema.CreateResult(pk=pk_value)

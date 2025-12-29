@@ -1,7 +1,16 @@
-import json
+import logging
 import re
 
 from pydantic import TypeAdapter
+
+
+def get_logger():
+    try:
+        # pylint: disable=import-outside-toplevel
+        import structlog
+        return structlog.get_logger('admin_panel')
+    except ImportError:
+        return logging.getLogger('admin_panel')
 
 
 class DeserializeAction:

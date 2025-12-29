@@ -35,6 +35,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
             self,
             *args,
             model=None,
+            table_schema=None,
             db_async_session=None,
             ordering_fields=None,
             search_fields=None,
@@ -54,6 +55,9 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
             self.ordering_fields = ordering_fields
 
         self.validate_fields()
+
+        if table_schema:
+            self.table_schema = table_schema
 
         if not self.table_schema:
             self.table_schema = SQLAlchemyFieldsSchema(model=self.model)

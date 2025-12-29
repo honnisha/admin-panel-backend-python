@@ -43,7 +43,8 @@ class DjangoRelatedField(TableField):
 
         results = []
 
-        qs = self.get_queryset(model, data)[:data.limit]
+        limit = min(150, data.limit)
+        qs = self.get_queryset(model, data)[:limit]
         if data.search_string:
             qs = qs.filter(id=data.search_string)
 

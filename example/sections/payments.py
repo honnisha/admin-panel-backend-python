@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 import uuid
 from typing import Any
 
@@ -11,8 +10,9 @@ from admin_panel.exceptions import FieldError
 from admin_panel.schema.table.admin_action import ActionData, ActionMessage, ActionResult, admin_action
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
+from admin_panel.utils import get_logger
 
-logger = logging.getLogger('admin_panel')
+logger = get_logger()
 
 
 class PaymentFiltersSchema(schema.FieldsSchema):
