@@ -22,6 +22,7 @@ class TerminalAdmin(sqlalchemy.SQLAlchemyAdmin):
             'id',
             'merchant_id',
             'public_id',
+            'currency_id',
             'title',
             'is_h2h',
             'imitation_api',

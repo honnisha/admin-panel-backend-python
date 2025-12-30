@@ -69,6 +69,9 @@ class Currency(BaseIDModel):
     def __repr__(self):
         return f"<Currency(id={self.id}, num_code='{self.num_code}', char_code='{self.char_code}')>"
 
+    def __str__(self):
+        return self.title
+
 
 class CurrencyFactory(SQLAlchemyFactoryBase):
     class Meta:
@@ -94,6 +97,9 @@ class Merchant(BaseIDModel):
     def __repr__(self):
         return f"<Merchant(id={self.id}, title='{self.title}')>"
 
+    def __str__(self):
+        return self.title
+
 
 class MerchantFactory(SQLAlchemyFactoryBase):
     class Meta:
@@ -105,6 +111,9 @@ class MerchantFactory(SQLAlchemyFactoryBase):
     title = factory.Faker("word")
     description = factory.Faker("sentence", nb_words=6)
     created_at = factory.LazyFunction(datetime.utcnow)
+
+    def __str__(self):
+        return self.title
 
 
 class Terminal(BaseIDModel):
@@ -153,6 +162,9 @@ class Terminal(BaseIDModel):
 
     def __repr__(self):
         return f"<Terminal #{self.id} title={self.title}>"
+
+    def __str__(self):
+        return self.title
 
 
 class TerminalFactory(SQLAlchemyFactoryBase):
