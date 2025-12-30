@@ -27,6 +27,7 @@ class CategoryTable(Category):
     table_filters: FieldsSchema | None = None
 
     ordering_fields: List[str] = Field(default_factory=list)
+    default_ordering: str | None = None
 
     pk_name: str | None = None
 
@@ -69,6 +70,7 @@ class CategoryTable(Category):
         table = TableInfoSchemaData(
             table_schema=self.table_schema.generate_schema(user, language_manager),
             ordering_fields=self.ordering_fields,
+            default_ordering=self.default_ordering,
 
             search_enabled=self.search_enabled,
             search_help=language_manager.get_text(self.search_help),

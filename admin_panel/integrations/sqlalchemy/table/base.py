@@ -11,15 +11,6 @@ Model fields = {model_attrs}
 '''
 
 
-def record_to_dict(record):
-    # pylint: disable=import-outside-toplevel
-    from sqlalchemy import inspect
-    return {
-        attr.key: getattr(record, attr.key)
-        for attr in inspect(record).mapper.column_attrs
-    }
-
-
 class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
     model: Any
     slug = None
@@ -123,7 +114,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
         for slug, field in self.table_schema.get_fields().items():
 
             # pylint: disable=protected-access
-            if field._type == "related" and field.rel_name:
+            if field._type == "related":
 
                 # pylint: disable=import-outside-toplevel
                 from sqlalchemy import inspect
@@ -138,7 +129,6 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
                     )
                     raise AttributeError(msg)
 
-                if field.rel_name:
-                    stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
+                stmt = stmt.options(selectinload(getattr(self.model, field.rel_name)))
 
         return stmt

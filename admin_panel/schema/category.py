@@ -83,6 +83,7 @@ class TableInfoSchemaData(DataclassBase):
     table_filters: FieldsSchemaData | None = Field(default=None)
 
     ordering_fields: List[str] = Field(default_factory=list)
+    default_ordering: str | None = None
 
     actions: Dict[str, dict] | None = Field(default_factory=dict)
 

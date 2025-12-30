@@ -26,6 +26,7 @@ category_schema_data = {
         'can_retrieve': True,
         'can_update': True,
         'ordering_fields': [],
+        'default_ordering': None,
         'pk_name': 'id',
         'search_enabled': True,
         'search_help': 'Доступные поля для поиска:\n'

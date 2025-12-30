@@ -84,6 +84,50 @@ async def test_retrieve(sqlite_sessionmaker):
 
 
 @pytest.mark.asyncio
+async def test_retrieve_currency(sqlite_sessionmaker):
+    category = sqlalchemy.SQLAlchemyAdmin(
+        model=Currency,
+        db_async_session=sqlite_sessionmaker,
+        table_schema=sqlalchemy.SQLAlchemyFieldsSchema(
+            model=Currency,
+            fields=[
+                'id',
+                'terminals',
+            ],
+        ),
+    )
+
+    language_manager = CustomLanguageManager('ru')
+    user = auth.UserABC(username="test")
+    merchant = await MerchantFactory()
+    currency = await CurrencyFactory()
+    terminal_1 = await TerminalFactory(
+        merchant=merchant,
+        currency=currency,
+        title='First',
+    )
+    terminal_2 = await TerminalFactory(
+        merchant=merchant,
+        currency=currency,
+        title='Second',
+    )
+
+    retrieve_result = await category.retrieve(
+        pk=currency.id,
+        user=user,
+        language_manager=language_manager,
+    )
+    expected_data = {
+        'id': currency.id,
+        'terminals': [
+            {'key': terminal_1.id, 'title': '<Terminal #1 title=First>'},
+            {'key': terminal_2.id, 'title': '<Terminal #2 title=Second>'},
+        ],
+    }
+    assert retrieve_result.data == expected_data, retrieve_result.data
+
+
+@pytest.mark.asyncio
 async def test_list(sqlite_sessionmaker):
     category = get_category(sqlite_sessionmaker)
     language_manager = CustomLanguageManager('ru')
@@ -172,14 +216,15 @@ async def test_update_related(sqlite_sessionmaker):
     language_manager = CustomLanguageManager('ru')
     user = auth.UserABC(username="test")
 
-    currency = await CurrencyFactory(title='RUB')
+    currency_rub = await CurrencyFactory(title='RUB')
+    currency_usd = await CurrencyFactory(title='USD')
     terminal_1 = await TerminalFactory(
         merchant=await MerchantFactory(title="Test merch"),
-        currency=await CurrencyFactory(title='USD'),
+        currency=currency_usd,
     )
     terminal_2 = await TerminalFactory(
         merchant=await MerchantFactory(title="Test merch"),
-        currency=await CurrencyFactory(title='USD'),
+        currency=currency_usd,
     )
 
     update_data = {
@@ -189,23 +234,28 @@ async def test_update_related(sqlite_sessionmaker):
         ],
     }
     update_result = await category.update(
-        pk=currency.id,
+        pk=currency_rub.id,
         data=update_data,
         user=user,
         language_manager=language_manager,
     )
-    assert update_result == schema.UpdateResult(pk=currency.id)
+    assert update_result == schema.UpdateResult(pk=currency_rub.id)
 
     async with sqlite_sessionmaker() as session:
-        result = await session.execute(
+        updated_rub = (await session.execute(
             select(Currency)
             .options(selectinload(Currency.terminals))
-            .where(Currency.id == currency.id)
-        )
-        updated = result.scalar_one()
+            .where(Currency.id == currency_rub.id)
+        )).scalar_one()
 
-    terminal_ids = sorted(t.id for t in updated.terminals)
-    assert terminal_ids == [terminal_1.id, terminal_2.id]
+        updated_usd = (await session.execute(
+            select(Currency)
+            .options(selectinload(Currency.terminals))
+            .where(Currency.id == currency_usd.id)
+        )).scalar_one()
+
+    assert sorted(t.id for t in updated_rub.terminals) == [terminal_1.id, terminal_2.id]
+    assert sorted(t.id for t in updated_usd.terminals) == []
 
 
 @pytest.mark.asyncio

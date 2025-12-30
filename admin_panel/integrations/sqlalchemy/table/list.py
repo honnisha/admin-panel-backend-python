@@ -1,7 +1,6 @@
 from admin_panel import auth, schema
 from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSchema
-from admin_panel.integrations.sqlalchemy.table.base import record_to_dict
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
 from admin_panel.utils import get_logger
@@ -10,6 +9,8 @@ logger = get_logger()
 
 
 class SQLAlchemyAdminListMixin:
+    table_schema: SQLAlchemyFieldsSchema
+
     def apply_ordering(self, stmt, list_data):
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import asc, desc
@@ -98,7 +99,7 @@ class SQLAlchemyAdminListMixin:
 
             count_stmt = select(func.count()).select_from(stmt.subquery())
             stmt = self.apply_pagination(stmt, list_data)
-        
+
         except Exception as e:
             logger.exception(
                 'SQLAlchemy %s list filters error: %s',
@@ -117,7 +118,7 @@ class SQLAlchemyAdminListMixin:
                 records = (await session.execute(stmt)).scalars().all()
                 for record in records:
                     line = await self.table_schema.serialize(
-                        record_to_dict(record),
+                        record,
                         extra={"record": record, "user": user},
                     )
                     data.append(line)

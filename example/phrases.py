@@ -74,6 +74,7 @@ LANGUAGES_PHRASES = {
         'whitelist_ips': 'Белый список IP',
         'users': 'Пользователи',
         'field_not_found_in_schema': 'Поле "{field_slug}" не найдено среди доступных: {available}',
+        'related_not_found': 'Ошибка при обновлении связей поля {field_slug}: запись {model} с ключем pk={pk} не найдена. Возможно запись более недоступна.',
     },
     'en': {
         'admin_title': 'Admin Panel Demo',
@@ -104,5 +105,6 @@ LANGUAGES_PHRASES = {
         'whitelist_ips': 'Whitelist IPs',
         'users': 'Users',
         'field_not_found_in_schema': 'The field "{field_slug}" was not found among the available fields: {available}',
+        'related_not_found': 'Error updating related field {field_slug}: {model} record with pk={pk} was not found. The record may no longer be available.',
     },
 }

@@ -3,19 +3,56 @@ from typing import Any, List
 from pydantic.dataclasses import dataclass
 
 from admin_panel.auth import UserABC
+from admin_panel.exceptions import AdminAPIException, APIError
 from admin_panel.schema.category import FieldSchemaData
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.table_models import Record
 from admin_panel.translations import LanguageManager
+from admin_panel.translations import TranslateText as _
 from admin_panel.utils import DeserializeAction
+
+
+def get_pk(obj):
+    pk_cols = obj.__mapper__.primary_key
+    if len(pk_cols) != 1:
+        raise NotImplementedError('Composite primary key is not supported')
+    return getattr(obj, pk_cols[0].key)
 
 
 @dataclass
 class SQLAlchemyRelatedField(TableField):
     _type: str = 'related'
 
+    # Тип связи.
+    # Откуда берётся:
+    # - из SQLAlchemy relationship.uselist
+    #   rel.uselist == True  -> список связанных объектов
+    #   rel.uselist == False -> одиночная связь
+    #
+    # Зачем нужен:
+    # - чтобы понимать, ожидать list или один объект
+    # - влияет на логику update_related и serialize
     many: bool = False
+
+    # Имя relationship-атрибута на модели.
+    # Откуда берётся:
+    # - из mapper.relationships: rel.key
+    # - либо через поиск relationship по FK колонке (col.local_columns)
+    #
+    # Зачем нужен:
+    # - для доступа к связи через ORM
+    #   getattr(record, rel_name)
+    # - для записи и чтения связанных объектов
     rel_name: str | None = None
+
+    # Класс связанной SQLAlchemy-модели.
+    # Откуда берётся:
+    # - из relationship: rel.mapper.class_
+    #
+    # Зачем нужен:
+    # - для загрузки связанных записей из БД
+    #   session.get(target_model, pk)
+    #   select(target_model).where(target_model.id.in_(...))
     target_model: Any | None = None
 
     def generate_schema(self, user: UserABC, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
@@ -92,17 +129,29 @@ class SQLAlchemyRelatedField(TableField):
         return results
 
     async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
-        # `value` may be a related ORM instance (via relationship) or a raw FK id.
-        if value is None:
-            return None
+        """
+        Сериализация related-поля.
 
-        if self.rel_name:
-            record = getattr(extra['record'], self.rel_name)
-            if record:
-                return {'key': value, 'title': str(record)}
+        Входные данные:
+        - value всегда scalar (None или int)
+        - ORM-объект доступен через extra["record"]
+        """
+        record = extra.get('record')
+        if record is None:
+            raise AttributeError('Missing record in serialize context')
 
-        # Otherwise assume scalar key
-        return {'key': value, 'title': str(value)}
+        if self.many:
+            related = getattr(record, self.rel_name)
+            if related is None:
+                raise AttributeError(f'Related field {self.rel_name} is missing on record')
+
+            return [{'key': get_pk(obj), 'title': str(obj)} for obj in related]
+
+        related = getattr(record, self.rel_name)
+        if related is None:
+            raise AttributeError(f'Related field {self.rel_name} is missing on record')
+
+        return {'key': get_pk(related), 'title': str(related)}
 
     async def deserialize(self, value, action: DeserializeAction, extra: dict, *args, **kwargs) -> Any:
         value = await super().deserialize(value, action, extra, *args, **kwargs)
@@ -143,16 +192,28 @@ class SQLAlchemyRelatedField(TableField):
         rel_attr = self.rel_name
 
         if self.many:
-            ids = value if isinstance(value, (list, tuple)) else [value]
+            assert isinstance(value, list)
 
-            if not ids:
+            if not value:
                 setattr(record, rel_attr, [])
                 return
 
-            result = await session.scalars(
-                select(self.target_model).where(self.target_model.id.in_(ids))
-            )
+            result = []
+            for i in value:
+                obj = await session.get(self.target_model, i)
+                if obj is None:
+                    msg = _('related_not_found') % {
+                        'model': self.target_model.__name__,
+                        'pk': i,
+                        'field_slug': field_slug,
+                    }
+                    raise AdminAPIException(
+                        APIError(message=msg, code='related_not_found'),
+                        status_code=400,
+                    )
+                result.append(obj)
 
+            # getattr(record, rel_attr).clear()
             getattr(record, rel_attr).extend(list(result))
             return
 

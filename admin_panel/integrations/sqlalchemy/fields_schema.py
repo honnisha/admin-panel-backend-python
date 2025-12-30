@@ -224,15 +224,17 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
         return stmt
 
-    async def serialize(self, line_data: dict, extra: dict, *args, **kwargs) -> dict:
-        for field_slug, field in self.get_fields().items():
-            # pylint: disable=protected-access
-            if field._type == 'function_field':
-                continue
+    async def serialize(self, record, extra: dict, *args, **kwargs) -> dict:
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import inspect
 
-            line_data[field_slug] = line_data.get(field_slug)
-
-        return await super().serialize(line_data, extra, *args, **kwargs)
+        # Convert model values to dict
+        record_data = {
+            attr.key: getattr(record, attr.key, None)
+            for attr in inspect(record).mapper.column_attrs
+            if self.get_field(attr.key)
+        }
+        return await super().serialize(record_data, extra, *args, **kwargs)
 
     def validate_incoming_data(self, data):
         '''
@@ -261,17 +263,25 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             extra={'model': self.model},
         )
 
+        # сначала простые поля
+        for field_slug, value in deserialized_data.items():
+            field = self.get_field(field_slug)
+
+            if isinstance(field, SQLAlchemyRelatedField):
+                continue
+
+            setattr(record, field_slug, value)
+
+        session.add(record)
+
+        # затем related под no_autoflush
         for field_slug, value in deserialized_data.items():
             field = self.get_field(field_slug)
 
             if isinstance(field, SQLAlchemyRelatedField):
                 with session.no_autoflush:
                     await field.update_related(record, field_slug, value, session)
-                continue
 
-            setattr(record, field_slug, value)
-
-        session.add(record)
         await session.commit()
         await session.refresh(record)
         return record
@@ -289,8 +299,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
             field = self.get_field(field_slug)
 
             if isinstance(field, SQLAlchemyRelatedField):
-                with session.no_autoflush:
-                    await field.update_related(record, field_slug, value, session)
+                await field.update_related(record, field_slug, value, session)
                 continue
 
             setattr(record, field_slug, value)

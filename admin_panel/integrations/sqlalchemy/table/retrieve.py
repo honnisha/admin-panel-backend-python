@@ -2,7 +2,6 @@ from typing import Any
 
 from admin_panel import auth, schema
 from admin_panel.exceptions import AdminAPIException, APIError
-from admin_panel.integrations.sqlalchemy.table.base import record_to_dict
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
 from admin_panel.utils import get_logger
@@ -30,10 +29,9 @@ class SQLAlchemyAdminRetrieveMixin:
             async with self.db_async_session() as session:
                 record = (await session.execute(stmt)).scalars().first()
                 data = await self.table_schema.serialize(
-                    record_to_dict(record),
+                    record,
                     extra={"record": record, "user": user},
                 )
-                return schema.RetrieveResult(data=data)
 
         except Exception as e:
             logger.exception(
@@ -49,3 +47,10 @@ class SQLAlchemyAdminRetrieveMixin:
                 APIError(message=msg, code='record_not_found'),
                 status_code=400,
             )
+
+        logger.debug(
+            '%s model %s #%s retrieved by %s',
+            type(self).__name__, self.table_schema.model.__name__, pk, user.username,
+            extra={'data': data},
+        )
+        return schema.RetrieveResult(data=data)

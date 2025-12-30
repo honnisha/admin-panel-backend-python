@@ -69,6 +69,7 @@ category_schema_data = {
         'ordering_fields': [
             'id',
         ],
+        'default_ordering': None,
         'pk_name': 'id',
         'search_enabled': True,
         'search_help': 'Доступные поля для поиска: id',

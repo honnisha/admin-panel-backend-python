@@ -154,10 +154,10 @@ class FieldsSchema:
 
         return fields_schema
 
-    async def serialize(self, line_data: dict, extra: dict) -> dict:
+    async def serialize(self, data: Any, extra: dict) -> dict:
         result = {}
         for field_slug, field in self.get_fields().items():
-            value = line_data.get(field_slug)
+            value = data.get(field_slug)
             result[field_slug] = await field.serialize(value, extra)
         return result
 
