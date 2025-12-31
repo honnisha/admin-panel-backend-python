@@ -1,4 +1,5 @@
 import abc
+import datetime
 from typing import Any, ClassVar, List, Tuple
 
 from pydantic.dataclasses import dataclass
@@ -75,6 +76,13 @@ class IntegerField(TableField):
 
         return schema
 
+    async def deserialize(self, value, action: DeserializeAction, extra: dict, *args, **kwargs) -> Any:
+        value = await super().deserialize(value, action, extra, *args, **kwargs)
+        if value and not isinstance(value, int):
+            raise FieldError(f'bad int type: {type(value)}')
+
+        return value
+
 
 @dataclass
 class StringField(TableField):
@@ -105,6 +113,13 @@ class StringField(TableField):
 
         return schema
 
+    async def deserialize(self, value, action: DeserializeAction, extra: dict, *args, **kwargs) -> Any:
+        value = await super().deserialize(value, action, extra, *args, **kwargs)
+        if value and not isinstance(value, str):
+            raise FieldError(f'bad string type: {type(value)}')
+
+        return value
+
 
 @dataclass
 class BooleanField(TableField):
@@ -129,10 +144,29 @@ class DateTimeField(TableField):
 
         return schema
 
-    async def serialize(self, value, extra: dict, *args, **kwargs) -> Any:
-        if value:
+    async def deserialize(self, value, action: DeserializeAction, extra: dict, *args, **kwargs) -> Any:
+        value = await super().deserialize(value, action, extra, *args, **kwargs)
+
+        if not value:
+            return
+
+        if value and not isinstance(value, (str, dict)):
+            raise FieldError(f'bad datetime type: {type(value)}')
+
+        if isinstance(value, str):
             return value.strftime(self.format)
-        return value
+
+        if isinstance(value, dict):
+            if not value.get('from') or not value.get('to'):
+                msg = f'{type(self).__name__} value must be dict with from,to values: {value}'
+                raise FieldError(msg)
+
+            return {
+                'from': datetime.datetime.fromisoformat(value.get('from')),
+                'to': datetime.datetime.fromisoformat(value.get('to')),
+            }
+
+        raise NotImplementedError(f'Value "{value}" is not supporetd for datetime')
 
 
 @dataclass
@@ -152,6 +186,14 @@ class ArrayField(TableField):
         schema.array_type = self.array_type
 
         return schema
+
+    async def deserialize(self, value, action: DeserializeAction, extra: dict, *args, **kwargs) -> Any:
+        value = await super().deserialize(value, action, extra, *args, **kwargs)
+
+        if value and not isinstance(value, list):
+            raise FieldError(f'bad array type: {type(value)}')
+
+        return value
 
 
 @dataclass

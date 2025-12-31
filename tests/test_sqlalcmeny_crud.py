@@ -177,7 +177,7 @@ async def test_list(sqlite_sessionmaker):
 
 
 @pytest.mark.asyncio
-async def test_update(sqlite_sessionmaker):
+async def test_update_related_one(sqlite_sessionmaker):
     category = get_category(sqlite_sessionmaker)
     language_manager = CustomLanguageManager('ru')
     user = auth.UserABC(username="test")
@@ -188,7 +188,7 @@ async def test_update(sqlite_sessionmaker):
     new_merchant = await MerchantFactory(title="New merch")
 
     update_data = {
-        'merchant_id': new_merchant.id,
+        'merchant_id': {'key': new_merchant.id, 'title': '123'},
         'description': 'new description',
     }
     update_result = await category.update(
@@ -201,7 +201,7 @@ async def test_update(sqlite_sessionmaker):
 
 
 @pytest.mark.asyncio
-async def test_update_related(sqlite_sessionmaker):
+async def test_update_related_many(sqlite_sessionmaker):
     category = sqlalchemy.SQLAlchemyAdmin(
         model=Currency,
         db_async_session=sqlite_sessionmaker,

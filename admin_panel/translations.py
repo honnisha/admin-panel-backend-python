@@ -62,7 +62,8 @@ DEFAULT_PHRASES = {
         'connection_refused_error': 'Ошибка подключения к базе данных: %(error)s',
         'search_help': 'Доступные поля для поиска:\n%(fields)s',
         'filters_exception': 'Произошла неизвестная техническая ошибка при фильтрации данных.',
-        'method_not_allowed': 'Ошибка, данный метод недоступен.'
+        'method_not_allowed': 'Ошибка, данный метод недоступен.',
+        'filter_error': 'Проишла ошибка при фильтрации: {error}',
     },
     'en': {
         'delete': 'Delete',
@@ -78,6 +79,7 @@ DEFAULT_PHRASES = {
         'search_help': 'Available search fields:\n%(fields)s',
         'filters_exception': 'An unknown technical error occurred while filtering data.',
         'method_not_allowed': 'Error, method not allowed. This action is not permitted.',
+        'filter_error': 'An error occurred during filtering: {error}',
     }
 }
 

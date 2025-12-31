@@ -3,7 +3,7 @@ from typing import Any, List
 from pydantic.dataclasses import dataclass
 
 from admin_panel.auth import UserABC
-from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.exceptions import AdminAPIException, APIError, FieldError
 from admin_panel.schema.category import FieldSchemaData
 from admin_panel.schema.table.fields.base import TableField
 from admin_panel.schema.table.table_models import Record
@@ -69,7 +69,7 @@ class SQLAlchemyRelatedField(TableField):
         attr = mapper.attrs.get(field_slug)
         if attr is None:
             msg = f'Field "{field_slug}" is not found on model "{model}"'
-            raise Exception(msg)
+            raise AttributeError(msg)
 
         # RelationshipProperty
         if hasattr(attr, 'mapper'):
@@ -79,7 +79,7 @@ class SQLAlchemyRelatedField(TableField):
         col = getattr(model, field_slug).property.columns[0]
         if not col.foreign_keys:
             msg = f'Field "{field_slug}" is not a relationship and not a FK column'
-            raise Exception(msg)
+            raise AttributeError(msg)
 
         fk = next(iter(col.foreign_keys))
         target_table = fk.column.table
@@ -90,7 +90,7 @@ class SQLAlchemyRelatedField(TableField):
                 return m.class_
 
         msg = f'Cannot resolve target model for FK "{field_slug}"'
-        raise Exception(msg)
+        raise AttributeError(msg)
 
     async def autocomplete(self, model, data, user, *, extra: dict | None = None) -> List[Record]:
         # pylint: disable=import-outside-toplevel
@@ -109,7 +109,6 @@ class SQLAlchemyRelatedField(TableField):
         limit = min(150, data.limit)
         stmt = select(target_model).limit(limit)
 
-        # Keep behaviour similar to Django version: search by id if search_string exists
         if data.search_string:
             if hasattr(target_model, 'id'):
                 stmt = stmt.where(getattr(target_model, 'id') == data.search_string)
@@ -159,15 +158,25 @@ class SQLAlchemyRelatedField(TableField):
             return None
 
         if isinstance(value, list):
-            return [i['key'] for i in value]
+            result = []
+            for i in value:
+                i = i.get('key')
+                if not isinstance(i, (int, str)):
+                    raise FieldError(f'Value "{i}" is not supported for related field')
+                result.append(i)
+            return result
 
+        result = None
         if isinstance(value, dict) and 'key' in value:
-            return value['key']
+            result = value['key']
 
-        if isinstance(value, int):
-            return value
+        if isinstance(value, (int, str)):
+            result = value
 
-        raise NotImplementedError(f'Value {value} is not supported for related field')
+        if not isinstance(result, (int, str)):
+            raise FieldError(f'Value "{result}" is not supported for related field')
+
+        return result
 
     async def update_related(self, record, field_slug, value, session):
         """
@@ -180,7 +189,6 @@ class SQLAlchemyRelatedField(TableField):
         """
 
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy import select
 
         if value is None:
             return
@@ -219,3 +227,24 @@ class SQLAlchemyRelatedField(TableField):
 
         obj = await session.get(self.target_model, value)
         setattr(record, rel_attr, obj)
+
+    async def apply_filter(self, stmt, value, model, column):
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy import inspect
+
+        if value is None:
+            return stmt
+
+        rel = getattr(model, self.rel_name)
+        pk_col = inspect(self.target_model).primary_key[0]
+
+        # many=False: FK (many-to-one)
+        if not self.many:
+            if not isinstance(value, int):
+                raise FieldError(f'Expected int for filter {self.rel_name}')
+            return stmt.where(rel.has(pk_col == value))
+
+        # many=True: one-to-many / many-to-many
+        if not isinstance(value, list):
+            raise FieldError(f'Expected list[int] for filter {self.rel_name}')
+        return stmt.where(rel.any(pk_col.in_(value)))

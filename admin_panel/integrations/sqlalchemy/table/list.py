@@ -1,5 +1,5 @@
 from admin_panel import auth, schema
-from admin_panel.exceptions import AdminAPIException, APIError
+from admin_panel.exceptions import AdminAPIException, APIError, FieldError
 from admin_panel.integrations.sqlalchemy.fields_schema import SQLAlchemyFieldsSchema
 from admin_panel.translations import LanguageManager
 from admin_panel.translations import TranslateText as _
@@ -10,6 +10,7 @@ logger = get_logger()
 
 class SQLAlchemyAdminListMixin:
     table_schema: SQLAlchemyFieldsSchema
+    table_filters: SQLAlchemyFieldsSchema | None
 
     def apply_ordering(self, stmt, list_data):
         # pylint: disable=import-outside-toplevel
@@ -62,7 +63,7 @@ class SQLAlchemyAdminListMixin:
 
         return stmt
 
-    def apply_filters(self, stmt, list_data: schema.ListData):
+    async def apply_filters(self, stmt, list_data: schema.ListData):
         if not self.table_filters or not list_data.filters:
             return stmt
 
@@ -70,7 +71,7 @@ class SQLAlchemyAdminListMixin:
             msg = f'{type(self).__name__}.table_filters {type(self.table_filters)} must be SQLAlchemyFieldsSchema subclass'
             raise AttributeError(msg)
 
-        return self.table_filters.apply_filters(stmt, list_data.filters)
+        return await self.table_filters.apply_filters(stmt, list_data.filters)
 
     def apply_pagination(self, stmt, list_data: schema.ListData):
         page = max(1, list_data.page or 1)
@@ -93,17 +94,28 @@ class SQLAlchemyAdminListMixin:
 
         try:
             stmt = self.get_queryset()
-            stmt = self.apply_filters(stmt, list_data)
+            stmt = await self.apply_filters(stmt, list_data)
             stmt = self.apply_search(stmt, list_data)
             stmt = self.apply_ordering(stmt, list_data)
 
             count_stmt = select(func.count()).select_from(stmt.subquery())
             stmt = self.apply_pagination(stmt, list_data)
 
+        except FieldError as e:
+            logger.exception(
+                'SQLAlchemy %s list filters for %s field error: %s',
+                type(self).__name__, self.model.__name__, e,
+                extra={
+                    'list_data': list_data,
+                }
+            )
+            msg = _('filter_error') % {'error', e.message}
+            raise AdminAPIException(APIError(message=msg, code='filters_exception'), status_code=500) from e
+
         except Exception as e:
             logger.exception(
-                'SQLAlchemy %s list filters error: %s',
-                type(self).__name__, e,
+                'SQLAlchemy %s list filters for %s error: %s',
+                type(self).__name__, self.model.__name__, e,
                 extra={
                     'list_data': list_data,
                 }

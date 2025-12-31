@@ -17,6 +17,7 @@ class DeserializeAction:
     CREATE = 0
     UPDATE = 1
     TABLE_ACTION = 2
+    FILTERS = 3
 
 
 class DataclassBase:

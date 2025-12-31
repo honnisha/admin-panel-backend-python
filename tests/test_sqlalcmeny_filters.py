@@ -32,12 +32,12 @@ async def test_list_filter(sqlite_sessionmaker):
     await TerminalFactory(title='other', merchant=merchant, currency=currency)
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters={'id': {'key': terminal_1.id, 'title': 'test'}}),
+        list_data=schema.ListData(filters={'id': terminal_1.id}),
         user=user,
         language_manager=language_manager,
     )
     assert list_result == schema.TableListResult(
-        data=[{'id': 1}], total_count=1
+        data=[{'id': terminal_1.id}], total_count=1
     ), 'поиск по id'
 
     list_result: dict = await category.get_list(
@@ -112,10 +112,10 @@ async def test_filter_related_one(sqlite_sessionmaker):
         db_async_session=sqlite_sessionmaker,
         table_schema=sqlalchemy.SQLAlchemyFieldsSchema(
             model=Currency,
-            fields=['title'],
+            fields=['id'],
         ),
         table_filters=sqlalchemy.SQLAlchemyFieldsSchema(
-            model=Terminal,
+            model=Currency,
             fields=['terminals'],
         ),
     )
@@ -133,7 +133,7 @@ async def test_filter_related_one(sqlite_sessionmaker):
 
     list_result: dict = await category.get_list(
         list_data=schema.ListData(filters={
-            'terminals': [{'key': terminal_1, 'title': 'test'}, {'key': terminal_2, 'title': 'test'}],
+            'terminals': [{'key': terminal_1.id, 'title': 'test'}, {'key': terminal_2.id, 'title': 'test'}],
         }),
         user=user,
         language_manager=language_manager,

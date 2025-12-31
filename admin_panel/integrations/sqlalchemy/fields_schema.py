@@ -8,6 +8,8 @@ from admin_panel.schema.table.fields.base import DateTimeField
 from admin_panel.translations import TranslateText as _
 from admin_panel.utils import DeserializeAction, humanize_field_name
 
+FIELD_FILTERS_NOT_FOUND = '{class_name} filter "{field_slug}" not found inside table_filters fields: {available_filters}'
+
 
 class SQLAlchemyFieldsSchema(schema.FieldsSchema):
     model: Any
@@ -182,36 +184,41 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
             yield field_slug, SQLAlchemyRelatedField(**field_data)
 
-    def apply_filters(self, stmt, filters: dict):
+    async def apply_filters(self, stmt, filters: dict):
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import String, cast
-        from sqlalchemy.orm import InstrumentedAttribute
 
-        # filters
-        for field_slug, value in filters.items():
+        for field_slug in filters.keys():
             field = self.get_field(field_slug)
 
             if not field:
                 available_filters = list(self.get_fields().keys())
-                msg = f'{type(self).__name__} filter "{field_slug}" not found inside table_filters fields: {available_filters}'
+                msg = FIELD_FILTERS_NOT_FOUND.format(
+                    class_name=type(self).__name__,
+                    field_slug=field_slug,
+                    available_filters=available_filters,
+                )
                 raise AttributeError(msg)
 
+        deserialized_filters = await self.deserialize(
+            filters,
+            DeserializeAction.FILTERS,
+            extra={'model': self.model},
+        )
+
+        for field_slug, value in deserialized_filters.items():
+            field = self.get_field(field_slug)
             column = getattr(self.model, field_slug, None)
 
-            if issubclass(type(field), DateTimeField) and field.range:
-                if not isinstance(value, dict) or not value.get('from') or not value.get('to'):
-                    msg = f'{type(self).__name__} filter "{field_slug}" value must be dict with from,to values'
-                    raise AttributeError(msg)
+            apply_filter = getattr(field, 'apply_filter', None)
+            if apply_filter and callable(apply_filter):
+                stmt = await apply_filter(stmt, value, self.model, column)
 
-                stmt = stmt.where(column >= datetime.datetime.fromisoformat(value['from']))
-                stmt = stmt.where(column <= datetime.datetime.fromisoformat(value['to']))
-                continue
+            elif issubclass(type(field), DateTimeField) and field.range:
+                stmt = stmt.where(column >= value['from'])
+                stmt = stmt.where(column <= value['to'])
 
-            if not isinstance(column, InstrumentedAttribute):
-                msg = f'{type(self).__name__} filter "{field_slug}" not found as field inside model {self.model}'
-                raise AttributeError(msg)
-
-            if isinstance(value, list):
+            elif isinstance(value, list):
                 stmt = stmt.where(column.in_(value))
 
             elif isinstance(value, str):

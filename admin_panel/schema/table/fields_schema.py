@@ -166,11 +166,11 @@ class FieldsSchema:
         errors = {}
         for field_slug, field in self.get_fields().items():
 
-            if field.read_only:
+            if field.read_only and action != DeserializeAction.FILTERS:
                 continue
 
             # Skip update if fields is not presented in data
-            if action == DeserializeAction.UPDATE and field_slug not in data:
+            if action in [DeserializeAction.UPDATE, DeserializeAction.FILTERS] and field_slug not in data:
                 continue
 
             value = data.get(field_slug)
