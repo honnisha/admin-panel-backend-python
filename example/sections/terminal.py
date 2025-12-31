@@ -35,5 +35,7 @@ class TerminalAdmin(sqlalchemy.SQLAlchemyAdmin):
         fields=[
             'id',
             'created_at',
+            'merchant_id',
+            'currency_id',
         ]
     )

@@ -10,6 +10,8 @@ logger = get_logger()
 
 
 class SQLAlchemyAdminUpdate:
+    has_update: bool = True
+
     # pylint: disable=too-many-locals
     async def update(
             self,
@@ -18,6 +20,9 @@ class SQLAlchemyAdminUpdate:
             user: auth.UserABC,
             language_manager: LanguageManager,
     ) -> schema.UpdateResult:
+        if not self.has_update:
+            raise AdminAPIException(APIError(message=_('method_not_allowed')), status_code=500)
+
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
         from sqlalchemy.exc import IntegrityError

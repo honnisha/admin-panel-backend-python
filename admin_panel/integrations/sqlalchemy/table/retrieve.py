@@ -10,12 +10,17 @@ logger = get_logger()
 
 
 class SQLAlchemyAdminRetrieveMixin:
+    has_retrieve: bool = True
+
     async def retrieve(
             self,
             pk: Any,
             user: auth.UserABC,
             language_manager: LanguageManager,
     ) -> schema.RetrieveResult:
+        if not self.has_delete:
+            raise AdminAPIException(APIError(message=_('method_not_allowed')), status_code=500)
+
         # pylint: disable=import-outside-toplevel
         from sqlalchemy import inspect
 

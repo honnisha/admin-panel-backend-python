@@ -39,6 +39,7 @@ class MerchantAdmin(sqlalchemy.SQLAlchemyAdmin):
             'id',
             'user_id',
             'created_at',
+            'terminals',
         ],
         created_at=schema.DateTimeField(range=True),
     )

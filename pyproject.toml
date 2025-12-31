@@ -1,9 +1,10 @@
 [project]
 name = "admin-panel"
 version = "0.32.0"
-description = "Add your description here"
+description = 'Admin panel backend for FastAPI and SQLAlchemy'
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = 'AGPL-3.0' }
 dependencies = [
     "asgiref>=3.11.0",
     "fastapi>=0.115.8",

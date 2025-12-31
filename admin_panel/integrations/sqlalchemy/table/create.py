@@ -9,12 +9,17 @@ logger = get_logger()
 
 
 class SQLAlchemyAdminCreate:
+    has_create: bool = True
+
     async def create(
             self,
             data: dict,
             user: UserABC,
             language_manager: LanguageManager,
     ) -> schema.CreateResult:
+        if not self.has_create:
+            raise AdminAPIException(APIError(message=_('method_not_allowed')), status_code=500)
+
         # pylint: disable=import-outside-toplevel
         from sqlalchemy.exc import IntegrityError
 

@@ -63,9 +63,9 @@ category_schema_data = {
                 'variant': 'outlined',
             },
         },
-        'can_create': True,
+        'can_create': False,
         'can_retrieve': True,
-        'can_update': True,
+        'can_update': False,
         'ordering_fields': [
             'id',
         ],

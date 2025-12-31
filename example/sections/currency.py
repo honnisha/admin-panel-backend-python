@@ -15,5 +15,6 @@ class CurrencyAdmin(sqlalchemy.SQLAlchemyAdmin):
         model=Currency,
         fields=[
             'id',
+            'terminals',
         ]
     )

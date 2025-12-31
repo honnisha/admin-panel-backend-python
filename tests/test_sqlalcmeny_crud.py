@@ -120,8 +120,8 @@ async def test_retrieve_currency(sqlite_sessionmaker):
     expected_data = {
         'id': currency.id,
         'terminals': [
-            {'key': terminal_1.id, 'title': '<Terminal #1 title=First>'},
-            {'key': terminal_2.id, 'title': '<Terminal #2 title=Second>'},
+            {'key': terminal_1.id, 'title': 'First'},
+            {'key': terminal_2.id, 'title': 'Second'},
         ],
     }
     assert retrieve_result.data == expected_data, retrieve_result.data
@@ -229,8 +229,8 @@ async def test_update_related(sqlite_sessionmaker):
 
     update_data = {
         'terminals': [
-            {'key': terminal_1.id, 'title': '<Terminal #1 title=Arroyo-Hanson>'},
-            {'key': terminal_2.id, 'title': '<Terminal #3 title=Peterson, Mendoza and Scott>'},
+            {'key': terminal_1.id, 'title': 'test'},
+            {'key': terminal_2.id, 'title': 'test'},
         ],
     }
     update_result = await category.update(

@@ -78,6 +78,9 @@ class CreatePaymentSchema(schema.FieldsSchema):
 
 
 class PaymentsAdmin(schema.CategoryTable):
+    has_update = False
+    has_create = False
+
     slug = 'payments'
     title = _('payments')
     icon = 'mdi-credit-card-outline'
