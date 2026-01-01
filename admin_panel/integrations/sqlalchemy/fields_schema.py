@@ -223,7 +223,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
             elif isinstance(value, str):
                 stmt = stmt.where(
-                    cast(column, String).like(f"%{value}%")
+                    cast(column, String).like(value)
                 )
 
             else:

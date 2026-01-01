@@ -48,6 +48,22 @@ class TranslateText(DataclassBase):
         self.translation_kwargs = other
         return self
 
+SQLALCHEMY_SEARCH_HELP_RU = '''<b>Доступные поля для поиска:</b>
+%(fields)s
+
+<b>Доступные операторы:</b>
+<b>""</b> - кавычки для точного совпадения
+<b>%%</b> - любая последовательность символов
+<b>_</b> - один любой символ
+'''
+sqlalchemy_search_help_EN = '''<b>Available search fields:</b>
+%(fields)s
+
+<b>Available operators:</b>
+<b>""</b> - quotes for exact match
+<b>%%</b> - any sequence of characters
+<b>_</b> - any single character
+'''
 
 DEFAULT_PHRASES = {
     'ru': {
@@ -61,7 +77,8 @@ DEFAULT_PHRASES = {
         'db_error_retrieve': 'Ошибка получения записи из базы данных.',
         'db_error_list': 'Ошибка получения данных таблицы из базы данных.',
         'connection_refused_error': 'Ошибка подключения к базе данных: %(error)s',
-        'search_help': 'Доступные поля для поиска:\n%(fields)s',
+        'search_help': 'Доступные поля для поиска: %(fields)s',
+        'sqlalchemy_search_help': SQLALCHEMY_SEARCH_HELP_RU,
         'filters_exception': 'Произошла неизвестная техническая ошибка при фильтрации данных.',
         'method_not_allowed': 'Ошибка, данный метод недоступен.',
         'filter_error': 'Проишла ошибка при фильтрации: {error}',
@@ -77,7 +94,8 @@ DEFAULT_PHRASES = {
         'db_error_retrieve': 'Error retrieving the record from the database.',
         'db_error_list': 'Failed to retrieve table data from the database.',
         'connection_refused_error': 'Database connection error: %(error)s',
-        'search_help': 'Available search fields:\n%(fields)s',
+        'search_help': 'Available search fields: %(fields)s',
+        'sqlalchemy_search_help': sqlalchemy_search_help_EN,
         'filters_exception': 'An unknown technical error occurred while filtering data.',
         'method_not_allowed': 'Error, method not allowed. This action is not permitted.',
         'filter_error': 'An error occurred during filtering: {error}',

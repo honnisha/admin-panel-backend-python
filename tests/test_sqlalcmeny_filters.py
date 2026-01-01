@@ -50,7 +50,7 @@ async def test_list_filter(sqlite_sessionmaker):
     ), 'Полная строка'
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(filters={'title': 'Test'}),
+        list_data=schema.ListData(filters={'title': 'Test%'}),
         user=user,
         language_manager=language_manager,
     )
@@ -96,7 +96,7 @@ async def test_list_search(sqlite_sessionmaker):
     await TerminalFactory(title='other', merchant=merchant, currency=currency)
 
     list_result: dict = await category.get_list(
-        list_data=schema.ListData(search='Test'),
+        list_data=schema.ListData(search='Test%'),
         user=user,
         language_manager=language_manager,
     )

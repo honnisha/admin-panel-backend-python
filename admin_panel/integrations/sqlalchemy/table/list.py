@@ -47,7 +47,7 @@ class SQLAlchemyAdminListMixin:
         if not self.search_fields or not list_data.search:
             return stmt
 
-        search = f"%{list_data.search}%"
+        search = list_data.search
         conditions = []
 
         for field_slug in self.search_fields:

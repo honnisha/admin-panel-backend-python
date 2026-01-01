@@ -41,7 +41,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
 
         if self.search_fields:
             self.search_enabled = True
-            self.search_help = _('search_help') % {'fields': ', '.join(self.search_fields)}
+            self.search_help = _('sqlalchemy_search_help') % {'fields': ', '.join(self.search_fields)}
 
         if default_ordering:
             self.default_ordering = default_ordering
