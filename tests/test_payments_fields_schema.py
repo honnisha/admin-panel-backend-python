@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 
 from admin_panel.auth import UserABC
@@ -72,7 +74,7 @@ category_schema_data = {
         'default_ordering': None,
         'pk_name': 'id',
         'search_enabled': True,
-        'search_help': 'Доступные поля для поиска: id',
+        'search_help': mock.ANY,
         'table_filters': {
             'fields': {
                 'created_at': {

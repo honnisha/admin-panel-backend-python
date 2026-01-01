@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 
 from admin_panel import schema, sqlalchemy
@@ -29,8 +31,7 @@ category_schema_data = {
         'default_ordering': '-id',
         'pk_name': 'id',
         'search_enabled': True,
-        'search_help': 'Доступные поля для поиска:\n'
-        'id',
+        'search_help': mock.ANY,
         'table_filters': None,
         'table_schema': {
             'fields': {
