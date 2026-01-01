@@ -130,7 +130,7 @@ class BooleanField(TableField):
 class DateTimeField(TableField):
     _type = 'datetime'
 
-    format: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+    format: str = '%Y-%m-%dT%H:%M:%S'
     range: bool | None = None
     include_date: bool | None = True
     include_time: bool | None = True
@@ -154,7 +154,7 @@ class DateTimeField(TableField):
             raise FieldError(f'bad datetime type: {type(value)}')
 
         if isinstance(value, str):
-            return value.strftime(self.format)
+            return datetime.datetime.strptime(value, self.format)
 
         if isinstance(value, dict):
             if not value.get('from') or not value.get('to'):
@@ -162,8 +162,8 @@ class DateTimeField(TableField):
                 raise FieldError(msg)
 
             return {
-                'from': datetime.datetime.fromisoformat(value.get('from')),
-                'to': datetime.datetime.fromisoformat(value.get('to')),
+                'from': datetime.datetime.strptime(value.get('from'), self.format),
+                'to': datetime.datetime.strptime(value.get('to'), self.format),
             }
 
         raise NotImplementedError(f'Value "{value}" is not supporetd for datetime')

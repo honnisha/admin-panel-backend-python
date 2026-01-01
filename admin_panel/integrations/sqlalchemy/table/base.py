@@ -29,6 +29,7 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
             table_schema=None,
             db_async_session=None,
             ordering_fields=None,
+            default_ordering=None,
             search_fields=None,
             **kwargs,
     ):
@@ -41,6 +42,9 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
         if self.search_fields:
             self.search_enabled = True
             self.search_help = _('search_help') % {'fields': ', '.join(self.search_fields)}
+
+        if default_ordering:
+            self.default_ordering = default_ordering
 
         if ordering_fields:
             self.ordering_fields = ordering_fields
@@ -80,6 +84,9 @@ class SQLAlchemyAdminBase(SQLAlchemyAdminAutocompleteMixin, CategoryTable):
             if col.primary_key and not self.pk_name:
                 self.pk_name = attr.key
                 break
+
+        if not self.default_ordering and self.pk_name:
+            self.default_ordering = f'-{self.pk_name}'
 
         super().__init__(*args, **kwargs)
 

@@ -17,10 +17,11 @@ class SQLAlchemyAdminListMixin:
         from sqlalchemy import asc, desc
         from sqlalchemy.orm import InstrumentedAttribute
 
-        if not list_data.ordering:
+        ordering = list_data.ordering or self.default_ordering
+
+        if not ordering:
             return stmt
 
-        ordering = list_data.ordering
         direction = asc
 
         if ordering.startswith("-"):
@@ -96,10 +97,10 @@ class SQLAlchemyAdminListMixin:
             stmt = self.get_queryset()
             stmt = await self.apply_filters(stmt, list_data)
             stmt = self.apply_search(stmt, list_data)
-            stmt = self.apply_ordering(stmt, list_data)
 
             count_stmt = select(func.count()).select_from(stmt.subquery())
             stmt = self.apply_pagination(stmt, list_data)
+            stmt = self.apply_ordering(stmt, list_data)
 
         except FieldError as e:
             logger.exception(

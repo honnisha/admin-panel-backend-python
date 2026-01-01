@@ -1,4 +1,4 @@
-from admin_panel import sqlalchemy
+from admin_panel import schema, sqlalchemy
 from admin_panel.translations import TranslateText as _
 from example.sections.models import User
 
@@ -20,4 +20,6 @@ class UserAdmin(sqlalchemy.SQLAlchemyAdmin):
     )
     table_filters = sqlalchemy.SQLAlchemyFieldsSchema(
         model=User,
+        created_at=schema.DateTimeField(range=True),
+        last_login=schema.DateTimeField(range=True),
     )

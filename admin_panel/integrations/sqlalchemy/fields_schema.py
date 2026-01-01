@@ -32,9 +32,6 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
         mapper = inspect(self.model).mapper
 
-        for field_slug, field in self.generate_related_fields():
-            generated_fields[field_slug] = field
-
         for attr in mapper.column_attrs:
             col: Column = attr.columns[0]
             field_slug = attr.key
@@ -115,6 +112,9 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
                 generated_fields = {field_slug: schema_field, **generated_fields}
             else:
                 generated_fields[field_slug] = schema_field
+
+        for field_slug, field in self.generate_related_fields():
+            generated_fields[field_slug] = field
 
         return generated_fields
 
