@@ -48,6 +48,7 @@ class TranslateText(DataclassBase):
         self.translation_kwargs = other
         return self
 
+
 SQLALCHEMY_SEARCH_HELP_RU = '''<b>Доступные поля для поиска:</b>
 %(fields)s
 

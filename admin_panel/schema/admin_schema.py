@@ -32,6 +32,7 @@ class AdminSettingsData(DataclassBase):
     title: str | TranslateText
     description: str | TranslateText | None
     login_greetings_message: str | TranslateText | None
+    navbar_density: str
     logo_image: str | None
     languages: Dict[str, str] | None
 
@@ -51,6 +52,7 @@ class AdminSchema:
     title: str | TranslateText | None = 'Admin'
     description: str | TranslateText | None = None
     login_greetings_message: str | TranslateText | None = None
+    navbar_density: str = 'default'
 
     favicon_image: str = '/admin/static/favicon.ico'
     backend_prefix = None
@@ -104,6 +106,7 @@ class AdminSchema:
             title=self.title,
             description=self.description,
             login_greetings_message=self.login_greetings_message,
+            navbar_density=self.navbar_density,
             logo_image=None,
             languages=languages,
         )
