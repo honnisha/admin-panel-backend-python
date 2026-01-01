@@ -43,7 +43,8 @@ class TranslateText(DataclassBase):
 
     def __mod__(self, other):
         if not isinstance(other, dict):
-            raise AttributeError('TranslateText only dict is supported trough % operand')
+            msg = f'TranslateText only dict is supported trough % operand (slug="{self.slug}" other={type(other)})'
+            raise AttributeError(msg)
         self.translation_kwargs = other
         return self
 

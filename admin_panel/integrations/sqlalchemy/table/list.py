@@ -28,15 +28,14 @@ class SQLAlchemyAdminListMixin:
             ordering = ordering[1:]
             direction = desc
 
-        if ordering not in self.ordering_fields:
-            msg = f'Ordering "{ordering}" is not allowed; available options: {self.ordering_fields}'
-            raise ValueError(msg)
+        if list_data.ordering and ordering not in self.ordering_fields:
+            msg = f'Ordering "{ordering}" is not allowed; available options: {self.ordering_fields} default_ordering: {self.default_ordering}'
+            raise FieldError(message=msg)
 
         column = getattr(self.model, ordering, None)
         if not isinstance(column, InstrumentedAttribute):
-            raise AttributeError(
-                f'{type(self).__name__} ordering field "{ordering}" not found in model {self.model}'
-            )
+            msg = f'{type(self).__name__} ordering field "{ordering}" not found in model {self.model}'
+            raise FieldError(message=msg)
 
         return stmt.order_by(direction(column))
 
@@ -110,7 +109,7 @@ class SQLAlchemyAdminListMixin:
                     'list_data': list_data,
                 }
             )
-            msg = _('filter_error') % {'error', e.message}
+            msg = _('filter_error') % {'error': e.message}
             raise AdminAPIException(APIError(message=msg, code='filters_exception'), status_code=500) from e
 
         except Exception as e:

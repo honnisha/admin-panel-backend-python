@@ -55,7 +55,7 @@ async def test_list_filter(sqlite_sessionmaker):
         language_manager=language_manager,
     )
     assert list_result == schema.TableListResult(
-        data=[{'id': terminal_1.id}, {'id': terminal_2.id}], total_count=2
+        data=[{'id': terminal_2.id}, {'id': terminal_1.id}], total_count=2
     ), 'Частичное вхождение'
 
     terminal_old = await TerminalFactory(
@@ -101,7 +101,7 @@ async def test_list_search(sqlite_sessionmaker):
         language_manager=language_manager,
     )
     assert list_result == schema.TableListResult(
-        data=[{'id': terminal_1.id}, {'id': terminal_2.id}], total_count=2,
+        data=[{'id': terminal_2.id}, {'id': terminal_1.id}], total_count=2,
     ), 'Поиск по title'
 
 
