@@ -142,6 +142,7 @@ class SQLAlchemyFieldsSchema(schema.FieldsSchema):
 
             field_data["rel_name"] = rel.key
             field_data["many"] = rel.uselist
+            field_data["dual_list"] = rel.uselist
             field_data["target_model"] = rel.mapper.class_
 
             yield field_slug, SQLAlchemyRelatedField(**field_data)

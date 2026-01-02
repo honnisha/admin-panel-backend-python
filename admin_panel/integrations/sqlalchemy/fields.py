@@ -55,10 +55,14 @@ class SQLAlchemyRelatedField(TableField):
     #   select(target_model).where(target_model.id.in_(...))
     target_model: Any | None = None
 
+    # Работает только если many=True
+    dual_list: bool = False
+
     def generate_schema(self, user: UserABC, field_slug, language_manager: LanguageManager) -> FieldSchemaData:
         schema = super().generate_schema(user, field_slug, language_manager)
         schema.many = self.many
         schema.rel_name = self.rel_name
+        schema.dual_list = self.dual_list
         return schema
 
     def _get_target_model(self, model, field_slug):

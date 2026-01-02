@@ -14,6 +14,7 @@ logger = get_logger()
 @dataclass
 class GroupSchemaData(DataclassBase):
     title: str | None
+    description: str | None
     icon: str | None
     categories: Dict[str, CategorySchemaData]
 
@@ -23,6 +24,7 @@ class Group(abc.ABC):
     categories: List[Category]
     slug: str
     title: str | TranslateText | None = None
+    description: str | TranslateText | None = None
 
     # https://pictogrammers.com/library/mdi/
     icon: str | None = None
@@ -35,6 +37,7 @@ class Group(abc.ABC):
     def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> GroupSchemaData:
         result = GroupSchemaData(
             title=language_manager.get_text(self.title) or self.slug,
+            description=language_manager.get_text(self.description),
             icon=self.icon,
             categories={},
         )

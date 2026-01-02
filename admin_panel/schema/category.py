@@ -48,6 +48,7 @@ class FieldSchemaData(DataclassBase):
     # SQLAlchemyRelatedField
     many: bool | None = None
     rel_name: str | None = None
+    dual_list: bool | None = None
 
     # IntegerField
     inputmode: str | None = None
@@ -102,6 +103,7 @@ class GraphInfoSchemaData(DataclassBase):
 @dataclass
 class CategorySchemaData(DataclassBase):
     title: str | None
+    description: str | None
     icon: str | None
     type: str
 
@@ -115,6 +117,7 @@ class CategorySchemaData(DataclassBase):
 class Category(abc.ABC):
     slug: ClassVar[str]
     title: ClassVar[str | TranslateText | None] = None
+    description: ClassVar[str | TranslateText | None] = None
 
     # https://pictogrammers.com/library/mdi/
     icon: ClassVar[str | None] = None
@@ -124,6 +127,7 @@ class Category(abc.ABC):
     def generate_schema(self, user: UserABC, language_manager: LanguageManager) -> CategorySchemaData:
         return CategorySchemaData(
             title=language_manager.get_text(self.title) or self.slug,
+            description=language_manager.get_text(self.description),
             icon=self.icon,
             type=self._type_slug,
         )

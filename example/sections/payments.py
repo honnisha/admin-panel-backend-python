@@ -83,6 +83,7 @@ class PaymentsAdmin(schema.CategoryTable):
 
     slug = 'payments'
     title = _('payments')
+    description = _('payments_description')
     icon = 'mdi-credit-card-outline'
 
     search_enabled = True

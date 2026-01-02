@@ -66,8 +66,6 @@ LOGIN_GREETINGS_MESSAGE = '''
 
 class FakeAdminAuthentication(AdminAuthentication):
     async def login(self, data: AuthData) -> AuthResult:
-        await asyncio.sleep(1.0)
-
         if data.username != 'admin' or data.password != 'admin':
             raise AdminAPIException(APIError(code='user_not_found'), status_code=401)
 
